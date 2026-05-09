@@ -169,6 +169,66 @@ let currentSelectedSpot = null;
 // Determine API base URL: if page is served from the same Express server (port 3000)
 // use relative paths; otherwise (e.g., VS Code Live Server on port 5500) use absolute URL.
 const API_BASE = (location.port && location.port !== '3000') ? 'http://localhost:3000' : '';
+const AUTH_KEYS = {
+  accessToken: 'auth.accessToken',
+  refreshToken: 'auth.refreshToken',
+  user: 'auth.user',
+  pendingOtpEmail: 'auth.pendingOtpEmail'
+};
+
+function getCurrentUser() {
+  try {
+    return JSON.parse(localStorage.getItem(AUTH_KEYS.user) || 'null');
+  } catch (_err) {
+    return null;
+  }
+}
+
+function getAccessToken() {
+  return localStorage.getItem(AUTH_KEYS.accessToken);
+}
+
+function setSession({ accessToken, refreshToken, user }) {
+  if (accessToken) localStorage.setItem(AUTH_KEYS.accessToken, accessToken);
+  if (refreshToken) localStorage.setItem(AUTH_KEYS.refreshToken, refreshToken);
+  if (user) localStorage.setItem(AUTH_KEYS.user, JSON.stringify(user));
+}
+
+function clearSession() {
+  localStorage.removeItem(AUTH_KEYS.accessToken);
+  localStorage.removeItem(AUTH_KEYS.refreshToken);
+  localStorage.removeItem(AUTH_KEYS.user);
+}
+
+async function authFetch(url, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  const token = getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(url, { ...options, headers });
+  if (response.status !== 401) return response;
+
+  const refreshToken = localStorage.getItem(AUTH_KEYS.refreshToken);
+  if (!refreshToken) return response;
+
+  const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken })
+  });
+
+  if (!refreshRes.ok) {
+    clearSession();
+    return response;
+  }
+
+  const refreshData = await refreshRes.json();
+  if (!refreshData.accessToken) return response;
+
+  localStorage.setItem(AUTH_KEYS.accessToken, refreshData.accessToken);
+  headers.Authorization = `Bearer ${refreshData.accessToken}`;
+  return fetch(url, { ...options, headers });
+}
 
 // ==== WEATHER FUNCTIONS ====
 
@@ -963,7 +1023,7 @@ function resetHotelForm() {
 }
 
 function bookHotel(hotelName, totalPrice, checkin, checkout) {
-  if (localStorage.getItem('isLoggedIn') !== 'true') {
+  if (!getAccessToken()) {
     showLoginModal();
     return;
   }
@@ -1037,6 +1097,11 @@ function loadGuides(district) {
 }
 
 function hireGuide(guideName, price) {
+  if (!getAccessToken()) {
+    showLoginModal();
+    return;
+  }
+
   const booking = {
     guide: guideName,
     price: price,
@@ -1093,51 +1158,288 @@ function viewBookingDetails(type, name) {
   alert(`Viewing details for ${type} booking: ${name}`);
 }
 // ===== LOGIN / AUTH =====
+function setAuthMessage(message, isError = false) {
+  const messageEl = document.getElementById('authMessage');
+  if (!messageEl) return;
+  messageEl.style.color = isError ? '#ff6b6b' : 'var(--muted)';
+  messageEl.textContent = message || '';
+}
+
+function showLoginForm() {
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const otpForm = document.getElementById('otpForm');
+  const title = document.getElementById('authModalTitle');
+  if (title) title.textContent = 'Login';
+  if (loginForm) loginForm.style.display = 'block';
+  if (registerForm) registerForm.style.display = 'none';
+  if (otpForm) otpForm.style.display = 'none';
+  setAuthMessage('');
+}
+
+function showRegisterForm() {
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const otpForm = document.getElementById('otpForm');
+  const title = document.getElementById('authModalTitle');
+  if (title) title.textContent = 'Sign Up';
+  if (loginForm) loginForm.style.display = 'none';
+  if (registerForm) registerForm.style.display = 'block';
+  if (otpForm) otpForm.style.display = 'none';
+  setAuthMessage('');
+}
+
+function showOtpForm(email = '') {
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const otpForm = document.getElementById('otpForm');
+  const title = document.getElementById('authModalTitle');
+  const otpEmail = document.getElementById('otpEmail');
+  if (title) title.textContent = 'Verify OTP';
+  if (loginForm) loginForm.style.display = 'none';
+  if (registerForm) registerForm.style.display = 'none';
+  if (otpForm) otpForm.style.display = 'block';
+  if (otpEmail && email) otpEmail.value = email;
+}
+
 function checkLogin() {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const user = getCurrentUser();
+  const isLoggedIn = !!user && !!getAccessToken();
   const loginStatus = document.getElementById('loginStatus');
   const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
   const ratingForm = document.getElementById('ratingForm');
   const loginToReviewBtn = document.getElementById('loginToReviewBtn');
+  const adminPanel = document.getElementById('adminPanel');
+
   if (isLoggedIn) {
-    const email = localStorage.getItem('userEmail') || 'User';
-    if (loginStatus) loginStatus.textContent = email;
+    if (loginStatus) loginStatus.textContent = user.email || 'User';
     if (loginBtn) loginBtn.textContent = 'Logout';
     if (loginBtn) loginBtn.onclick = logout;
+    if (signupBtn) signupBtn.style.display = 'none';
     if (ratingForm) ratingForm.style.display = 'block';
     if (loginToReviewBtn) loginToReviewBtn.style.display = 'none';
+    if (adminPanel) adminPanel.style.display = user.role === 'admin' ? 'block' : 'none';
+    if (user.role === 'admin') refreshAdminPanel();
   } else {
     if (loginStatus) loginStatus.textContent = '';
     if (loginBtn) loginBtn.textContent = 'Login';
     if (loginBtn) loginBtn.onclick = showLoginModal;
+    if (signupBtn) signupBtn.style.display = 'inline-flex';
     if (ratingForm) ratingForm.style.display = 'none';
     if (loginToReviewBtn) loginToReviewBtn.style.display = 'block';
+    if (adminPanel) adminPanel.style.display = 'none';
   }
+
+  updateCheckLogin();
   renderReviews();
 }
 
 function showLoginModal() {
+  showLoginForm();
   document.getElementById('loginModal').style.display = 'block';
 }
+
+function showRegisterModal() {
+  showRegisterForm();
+  document.getElementById('loginModal').style.display = 'block';
+}
+
 function closeLoginModal() {
   document.getElementById('loginModal').style.display = 'none';
 }
-function login() {
-  const email = document.getElementById('loginEmail').value;
+
+async function login() {
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const password = document.getElementById('loginPassword').value;
   if (!email || !password) {
-    alert('Please enter email and password');
+    setAuthMessage('Please enter email and password', true);
     return;
   }
-  localStorage.setItem('isLoggedIn', 'true');
-  localStorage.setItem('userEmail', email);
-  closeLoginModal();
-  checkLogin();
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthMessage(data.error || 'Login failed', true);
+      return;
+    }
+
+    setSession({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user });
+    closeLoginModal();
+    checkLogin();
+  } catch (err) {
+    setAuthMessage(err.message || 'Login failed', true);
+  }
 }
-function logout() {
-  localStorage.removeItem('isLoggedIn');
-  localStorage.removeItem('userEmail');
-  checkLogin();
+
+async function registerUser() {
+  const name = document.getElementById('registerName').value.trim();
+  const email = document.getElementById('registerEmail').value.trim().toLowerCase();
+  const phone = document.getElementById('registerPhone').value.trim();
+  const password = document.getElementById('registerPassword').value;
+
+  if (!name || !email || !password) {
+    setAuthMessage('Name, email and password are required', true);
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, phone, password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthMessage(data.error || 'Registration failed', true);
+      return;
+    }
+
+    localStorage.setItem(AUTH_KEYS.pendingOtpEmail, email);
+    showOtpForm(email);
+    setAuthMessage(`OTP sent. ${data.otp ? `Demo OTP: ${data.otp}` : ''}`.trim(), false);
+  } catch (err) {
+    setAuthMessage(err.message || 'Registration failed', true);
+  }
+}
+
+async function verifySignupOtp() {
+  const email = document.getElementById('otpEmail').value.trim().toLowerCase();
+  const otp = document.getElementById('otpCode').value.trim();
+
+  if (!email || !otp) {
+    setAuthMessage('Email and OTP are required', true);
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, purpose: 'registration' })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthMessage(data.error || 'OTP verification failed', true);
+      return;
+    }
+
+    localStorage.removeItem(AUTH_KEYS.pendingOtpEmail);
+    showLoginForm();
+    setAuthMessage('OTP verified. Please login.', false);
+  } catch (err) {
+    setAuthMessage(err.message || 'OTP verification failed', true);
+  }
+}
+
+async function resendSignupOtp() {
+  const emailInput = document.getElementById('otpEmail');
+  const email = (emailInput?.value || localStorage.getItem(AUTH_KEYS.pendingOtpEmail) || '').trim().toLowerCase();
+  if (!email) {
+    setAuthMessage('Email is required for OTP resend', true);
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/resend-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, purpose: 'registration' })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthMessage(data.error || 'OTP resend failed', true);
+      return;
+    }
+    setAuthMessage(`OTP resent. ${data.otp ? `Demo OTP: ${data.otp}` : ''}`.trim(), false);
+  } catch (err) {
+    setAuthMessage(err.message || 'OTP resend failed', true);
+  }
+}
+
+async function refreshAdminPanel() {
+  const user = getCurrentUser();
+  if (!user || user.role !== 'admin') return;
+
+  const statusEl = document.getElementById('adminPanelStatus');
+  const analyticsEl = document.getElementById('adminAnalytics');
+  const usersEl = document.getElementById('adminUsers');
+  if (statusEl) statusEl.textContent = 'Loading admin data...';
+
+  try {
+    const [analyticsRes, usersRes] = await Promise.all([
+      authFetch(`${API_BASE}/api/admin/analytics`),
+      authFetch(`${API_BASE}/api/admin/users`)
+    ]);
+
+    const analyticsData = await analyticsRes.json();
+    const usersData = await usersRes.json();
+    if (!analyticsRes.ok) throw new Error(analyticsData.error || 'Failed to load analytics');
+    if (!usersRes.ok) throw new Error(usersData.error || 'Failed to load users');
+
+    if (analyticsEl) {
+      analyticsEl.innerHTML = `
+        <p><strong>Users:</strong> ${analyticsData.users}</p>
+        <p><strong>Hotel Bookings:</strong> ${analyticsData.hotelBookings}</p>
+        <p><strong>Guide Bookings:</strong> ${analyticsData.guideBookings}</p>
+        <p><strong>Reviews:</strong> ${analyticsData.reviews}</p>
+      `;
+    }
+
+    if (usersEl) {
+      const rows = (usersData.users || []).slice(0, 20).map((u) => `
+        <tr>
+          <td>${u.name || '-'}</td>
+          <td>${u.email || '-'}</td>
+          <td>${u.role_name || '-'}</td>
+          <td>${u.is_active ? 'Active' : 'Inactive'}</td>
+          <td>${u.is_verified ? 'Verified' : 'Pending'}</td>
+        </tr>
+      `).join('');
+
+      usersEl.innerHTML = `
+        <div style="overflow:auto;">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:6px;">Name</th>
+                <th style="text-align:left; padding:6px;">Email</th>
+                <th style="text-align:left; padding:6px;">Role</th>
+                <th style="text-align:left; padding:6px;">Status</th>
+                <th style="text-align:left; padding:6px;">Verification</th>
+              </tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="5" style="padding:6px;">No users found.</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    if (statusEl) statusEl.textContent = 'Admin data loaded.';
+  } catch (err) {
+    if (statusEl) statusEl.textContent = `Failed to load admin data: ${err.message}`;
+  }
+}
+
+async function logout() {
+  try {
+    const refreshToken = localStorage.getItem(AUTH_KEYS.refreshToken);
+    if (refreshToken) {
+      await fetch(`${API_BASE}/api/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken })
+      });
+    }
+  } finally {
+    clearSession();
+    checkLogin();
+  }
 }
 
 // ===== STAR RATING =====
@@ -1190,7 +1492,8 @@ function renderReviews() {
 }
 
 function submitReview() {
-  if (localStorage.getItem('isLoggedIn') !== 'true') {
+  const user = getCurrentUser();
+  if (!getAccessToken() || !user) {
     alert('Please login to submit a review');
     return;
   }
@@ -1205,7 +1508,7 @@ function submitReview() {
   }
   const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
   reviews.push({
-    email: localStorage.getItem('userEmail') || 'User',
+    email: user.email || 'User',
     rating: selectedRating,
     text: text,
     date: new Date().toISOString()
@@ -1255,7 +1558,8 @@ function renderHomepageReviews() {
 }
 
 function submitHomepageReview() {
-  if (localStorage.getItem('isLoggedIn') !== 'true') {
+  const user = getCurrentUser();
+  if (!getAccessToken() || !user) {
     showLoginModal();
     return;
   }
@@ -1264,7 +1568,7 @@ function submitHomepageReview() {
   if (homepageSelectedRating === 0) { alert('Please select a rating'); return; }
   const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
   reviews.push({
-    email: localStorage.getItem('userEmail') || 'User',
+    email: user.email || 'User',
     rating: homepageSelectedRating,
     text: text,
     date: new Date().toISOString()
@@ -1279,7 +1583,7 @@ function submitHomepageReview() {
 
 // Update checkLogin to handle homepage elements
 function updateCheckLogin() {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const isLoggedIn = !!getAccessToken() && !!getCurrentUser();
   const ratingForm = document.getElementById('homepageRatingForm');
   const loginBtn = document.getElementById('homepageLoginBtn');
   if (isLoggedIn) {
@@ -1291,9 +1595,10 @@ function updateCheckLogin() {
   }
   renderHomepageReviews();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
   setupHomepageStarRating();
   updateCheckLogin();
-document.addEventListener('DOMContentLoaded', () => {
   checkLogin();
   setupStarRating();
 });

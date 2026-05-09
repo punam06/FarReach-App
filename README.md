@@ -85,3 +85,17 @@ Server runs at `http://localhost:3000`.
 ### Existing weather endpoints kept
 - `GET /api/weather`
 - `GET /api/forecast`
+
+---
+
+## Frontend Auth + Admin Usage
+
+- Use **Sign Up** to register.
+- Enter OTP in the modal to verify account.
+- Then login with email/password.
+- Reserved emails below are automatically assigned admin role on registration:
+  - `punam.papri@gmail.com`
+  - `rebekasultanaorce455@gmail.com`
+- Logged in admins can access the **Admin Panel** section in the UI and load:
+  - user list
+  - admin analytics

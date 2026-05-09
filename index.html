@@ -32,6 +32,7 @@
 
 	      <div class="auth-section" id="authSection">
 	        <span id="loginStatus" style="color:var(--muted); margin-right:8px;"></span>
+	        <button class="button secondary" id="signupBtn" onclick="showRegisterModal()">Sign Up</button>
 	        <button class="button secondary" id="loginBtn" onclick="showLoginModal()">Login</button>
 	      </div>
 	    </header>
@@ -415,6 +416,25 @@
 	        </div>
 	        <button class="button secondary" id="loginToReviewBtn" onclick="showLoginModal()">Login to Review</button>
 	      </section>
+
+        <section class="contact-section" id="adminPanel" style="display:none;">
+          <div>
+            <h2>Admin Panel</h2>
+            <p>Only reserved admin users can access this panel.</p>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="button primary" onclick="refreshAdminPanel()">Refresh Admin Data</button>
+          </div>
+          <div id="adminPanelStatus" style="margin-top:12px; color:var(--muted);"></div>
+          <div style="margin-top:18px;">
+            <h3>Analytics</h3>
+            <div id="adminAnalytics"></div>
+          </div>
+          <div style="margin-top:18px;">
+            <h3>Users</h3>
+            <div id="adminUsers"></div>
+          </div>
+        </section>
     </main>
   </div>
 
@@ -422,11 +442,38 @@
 	  <div id="loginModal" class="modal">
 	    <div class="modal-content">
 	      <span class="close" onclick="closeLoginModal()">&times;</span>
-	      <h3>Login</h3>
-	      <input type="email" id="loginEmail" placeholder="Email" class="modal-input">
-	      <input type="password" id="loginPassword" placeholder="Password" class="modal-input">
-	      <button class="button primary" onclick="login()">Login</button>
-	      <p style="color:var(--muted); font-size:0.85rem;">(Use any email/password - this is a demo)</p>
+	      <h3 id="authModalTitle">Login</h3>
+        <div id="authMessage" style="margin-bottom:8px; color:var(--muted);"></div>
+
+        <div id="loginForm">
+	        <input type="email" id="loginEmail" placeholder="Email" class="modal-input">
+	        <input type="password" id="loginPassword" placeholder="Password" class="modal-input">
+	        <button class="button primary" onclick="login()">Login</button>
+          <p style="color:var(--muted); font-size:0.85rem;">
+            New user? <a href="#" onclick="showRegisterForm(); return false;">Create account</a>
+          </p>
+        </div>
+
+        <div id="registerForm" style="display:none;">
+          <input type="text" id="registerName" placeholder="Full Name" class="modal-input">
+          <input type="email" id="registerEmail" placeholder="Email" class="modal-input">
+          <input type="text" id="registerPhone" placeholder="Phone (optional)" class="modal-input">
+          <input type="password" id="registerPassword" placeholder="Password (min 8 chars)" class="modal-input">
+          <button class="button primary" onclick="registerUser()">Register & Send OTP</button>
+          <p style="color:var(--muted); font-size:0.85rem;">
+            Already registered? <a href="#" onclick="showLoginForm(); return false;">Back to login</a>
+          </p>
+        </div>
+
+        <div id="otpForm" style="display:none;">
+          <input type="email" id="otpEmail" placeholder="Email" class="modal-input">
+          <input type="text" id="otpCode" placeholder="Enter OTP" class="modal-input">
+          <button class="button primary" onclick="verifySignupOtp()">Verify OTP</button>
+          <button class="button secondary" onclick="resendSignupOtp()">Resend OTP</button>
+          <p style="color:var(--muted); font-size:0.85rem;">
+            After verification, you can login.
+          </p>
+        </div>
 	    </div>
 	  </div>
   <script src="script.js"></script>
