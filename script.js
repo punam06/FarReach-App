@@ -200,6 +200,15 @@ function clearSession() {
   localStorage.removeItem(AUTH_KEYS.user);
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 async function authFetch(url, options = {}) {
   const headers = { ...(options.headers || {}) };
   const token = getAccessToken();
@@ -1302,7 +1311,7 @@ async function registerUser() {
 
     localStorage.setItem(AUTH_KEYS.pendingOtpEmail, email);
     showOtpForm(email);
-    setAuthMessage(`OTP sent. ${data.otp ? `Demo OTP: ${data.otp}` : ''}`.trim(), false);
+    setAuthMessage('OTP sent successfully. Please verify to continue.', false);
   } catch (err) {
     setAuthMessage(err.message || 'Registration failed', true);
   }
@@ -1356,7 +1365,7 @@ async function resendSignupOtp() {
       setAuthMessage(data.error || 'OTP resend failed', true);
       return;
     }
-    setAuthMessage(`OTP resent. ${data.otp ? `Demo OTP: ${data.otp}` : ''}`.trim(), false);
+    setAuthMessage('OTP resent successfully.', false);
   } catch (err) {
     setAuthMessage(err.message || 'OTP resend failed', true);
   }
@@ -1383,20 +1392,24 @@ async function refreshAdminPanel() {
     if (!usersRes.ok) throw new Error(usersData.error || 'Failed to load users');
 
     if (analyticsEl) {
+      const usersCount = Number(analyticsData.users) || 0;
+      const hotelBookingsCount = Number(analyticsData.hotelBookings) || 0;
+      const guideBookingsCount = Number(analyticsData.guideBookings) || 0;
+      const reviewCount = Number(analyticsData.reviews) || 0;
       analyticsEl.innerHTML = `
-        <p><strong>Users:</strong> ${analyticsData.users}</p>
-        <p><strong>Hotel Bookings:</strong> ${analyticsData.hotelBookings}</p>
-        <p><strong>Guide Bookings:</strong> ${analyticsData.guideBookings}</p>
-        <p><strong>Reviews:</strong> ${analyticsData.reviews}</p>
+        <p><strong>Users:</strong> ${usersCount}</p>
+        <p><strong>Hotel Bookings:</strong> ${hotelBookingsCount}</p>
+        <p><strong>Guide Bookings:</strong> ${guideBookingsCount}</p>
+        <p><strong>Reviews:</strong> ${reviewCount}</p>
       `;
     }
 
     if (usersEl) {
       const rows = (usersData.users || []).slice(0, 20).map((u) => `
         <tr>
-          <td>${u.name || '-'}</td>
-          <td>${u.email || '-'}</td>
-          <td>${u.role_name || '-'}</td>
+          <td>${escapeHtml(u.name || '-')}</td>
+          <td>${escapeHtml(u.email || '-')}</td>
+          <td>${escapeHtml(u.role_name || '-')}</td>
           <td>${u.is_active ? 'Active' : 'Inactive'}</td>
           <td>${u.is_verified ? 'Verified' : 'Pending'}</td>
         </tr>
