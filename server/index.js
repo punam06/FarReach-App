@@ -19,14 +19,12 @@ const {
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
-const RESERVED_ADMINS = new Set([
-  'punam.papri@gmail.com',
-  'rebekasultanaorce455@gmail.com'
-]);
-
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '..')));
+const RESERVED_ADMINS = new Set(
+  (process.env.RESERVED_ADMIN_EMAILS || 'punam.papri@gmail.com,rebekasultanaorce455@gmail.com')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+);
 
 const authLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
@@ -41,6 +39,18 @@ const otpLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 });
+
+const apiLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '..')));
+app.use('/api', apiLimiter);
 
 function badRequest(res, msg) {
   return res.status(400).json({ error: msg });
@@ -557,7 +567,7 @@ app.post('/api/hotels/search', async (req, res) => {
           totalPrice: (Number(h.price_per_night) + vat + service) * nights,
           nights,
           portals: [
-            { name: 'Booking.com', url: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(h.city + ', Bangladesh')}` },
+            { name: 'Booking.com', url: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent((h.city || city) + ', Bangladesh')}` },
             { name: 'Hotel.com.bd', url: 'https://hotel.com.bd' },
             { name: 'Parjatan (Official)', url: 'https://hotels.gov.bd' }
           ],

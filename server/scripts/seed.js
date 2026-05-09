@@ -4,10 +4,10 @@ const path = require('path');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 
-const RESERVED_ADMINS = [
-  'punam.papri@gmail.com',
-  'rebekasultanaorce455@gmail.com'
-];
+const RESERVED_ADMINS = (process.env.RESERVED_ADMIN_EMAILS || 'punam.papri@gmail.com,rebekasultanaorce455@gmail.com')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
 
 async function run() {
   const conn = await mysql.createConnection({

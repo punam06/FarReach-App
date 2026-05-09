@@ -18,6 +18,7 @@ cp /home/runner/work/FarReach-App/FarReach-App/server/.env.example /home/runner/
 ```
 
 Set your MySQL and secret values in `.env`.
+Also set `RESERVED_ADMIN_EMAILS` if you want to change the default seeded admin email list.
 
 ### 3) Run DB migration and seed
 
