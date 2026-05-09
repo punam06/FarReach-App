@@ -35,9 +35,7 @@ This creates and seeds:
 - hotels, hotel_features, hotel_bookings
 - routes, reviews, activity_logs
 
-Reserved admin emails seeded:
-- `punam.papri@gmail.com`
-- `rebekasultanaorce455@gmail.com`
+Reserved admin emails are seeded from `RESERVED_ADMIN_EMAILS` in `.env`.
 
 ### 4) Start server
 
@@ -93,9 +91,7 @@ Server runs at `http://localhost:3000`.
 - Use **Sign Up** to register.
 - Enter OTP in the modal to verify account.
 - Then login with email/password.
-- Reserved emails below are automatically assigned admin role on registration:
-  - `punam.papri@gmail.com`
-  - `rebekasultanaorce455@gmail.com`
+- Emails listed in `RESERVED_ADMIN_EMAILS` are automatically assigned admin role on registration.
 - Logged in admins can access the **Admin Panel** section in the UI and load:
   - user list
   - admin analytics

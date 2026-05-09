@@ -701,6 +701,10 @@ function initializePage() {
       }
     };
   }
+
+  setupHomepageStarRating();
+  setupStarRating();
+  checkLogin();
   
   // Initial render
   render();
@@ -1405,7 +1409,8 @@ async function refreshAdminPanel() {
     }
 
     if (usersEl) {
-      const rows = (usersData.users || []).slice(0, 20).map((u) => `
+      const adminUsers = (usersData.users || []).slice(0, 20);
+      const rows = adminUsers.map((u) => `
         <tr>
           <td>${escapeHtml(u.name || '-')}</td>
           <td>${escapeHtml(u.email || '-')}</td>
@@ -1427,7 +1432,7 @@ async function refreshAdminPanel() {
                 <th style="text-align:left; padding:6px;">Verification</th>
               </tr>
             </thead>
-            <tbody>${rows || '<tr><td colspan="5" style="padding:6px;">No users found.</td></tr>'}</tbody>
+            <tbody>${adminUsers.length ? rows : '<tr><td colspan="5" style="padding:6px;">No users found.</td></tr>'}</tbody>
           </table>
         </div>
       `;
@@ -1608,10 +1613,3 @@ function updateCheckLogin() {
   }
   renderHomepageReviews();
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  setupHomepageStarRating();
-  updateCheckLogin();
-  checkLogin();
-  setupStarRating();
-});
