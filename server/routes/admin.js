@@ -199,7 +199,7 @@ router.get('/reviews', async (req, res) => {
       `SELECT r.*, u.name as user_name, s.name as spot_name 
        FROM reviews r 
        JOIN users u ON r.user_id = u.id 
-       JOIN spots s ON r.spot_id = s.id 
+       LEFT JOIN spots s ON r.spot_id = s.id 
        ORDER BY r.created_at DESC`
     );
     res.json({ reviews });
@@ -216,15 +216,9 @@ router.delete('/reviews/:id', async (req, res) => {
 router.get('/bookings', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT b.*, u.name as user_name, u.email as user_email,
-       CASE 
-         WHEN b.type = 'hotel' THEN b.target_name
-         WHEN b.type = 'guide' THEN g.name
-         ELSE b.target_name
-       END as target_name
+      `SELECT b.*, u.name as user_name, u.email as user_email
        FROM bookings b
        JOIN users u ON b.user_id = u.id
-       LEFT JOIN guides g ON b.type = 'guide' AND b.target_id = g.id
        ORDER BY b.created_at DESC`
     );
     res.json({ bookings: rows });

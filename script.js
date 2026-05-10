@@ -520,6 +520,7 @@ function displayPopularGrid(filteredSpots) {
           <span class="spot-category">${spot.category}</span>
           <span class="spot-budget">${profile.budget === 'high' ? 'High Budget' : 'Low Budget'}</span>
         </div>
+        <button class="save-btn-mini" onclick="event.stopPropagation(); saveSpot(${spot.id})" title="Save to Dashboard" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.9); border:none; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#ff4757; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.1);"><i class="far fa-heart"></i></button>
       </div>
     `;
     card.style.cursor = 'pointer';
@@ -595,10 +596,15 @@ function selectSpot(spot) {
     fetchCurrentWeatherForTab(spot.district);
   }
 
-  const mapTab = document.getElementById('map-tab');
-  if (mapTab && mapTab.classList.contains('active')) {
     loadMap(spot.district, spot.name);
   }
+  
+  const reviewsTab = document.getElementById('reviews-tab');
+  if (reviewsTab && reviewsTab.classList.contains('active')) {
+    renderSpotReviews(spot.id);
+  }
+  
+  updateSaveButtonState(spot.id);
 }
 
 function calculateBudgetLocally(spot, inputs) {
@@ -747,6 +753,19 @@ async function initializePage() {
     console.error('Failed to fetch spots from DB', e);
   }
 
+  // Check for spot ID in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const spotIdParam = urlParams.get('spot');
+  if (spotIdParam) {
+    const spot = allSpots.find(s => s.id == spotIdParam);
+    if (spot) {
+      setTimeout(() => {
+        selectSpot(spot);
+        document.getElementById('route')?.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+    }
+  }
+
   // Initialize district data structures
   window.districtData = {};
   spots.forEach(s => {
@@ -869,6 +888,11 @@ function initializeTabContent(tabName) {
         loadMap(currentSelectedSpot.district, currentSelectedSpot.name);
       } else {
         loadMap(district, '');
+      }
+      break;
+    case 'reviews':
+      if (currentSelectedSpot) {
+        renderSpotReviews(currentSelectedSpot.id);
       }
       break;
     case 'route':
@@ -1506,10 +1530,164 @@ function updateCheckLogin() {
   renderHomepageReviews();
 }
 
+// ===== SPOT REVIEWS & SAVING =====
+let spotSelectedRating = 0;
+
+function setupSpotStarRating() {
+  const stars = document.querySelectorAll('#spotStarRating .star');
+  stars.forEach(star => {
+    star.addEventListener('click', () => {
+      spotSelectedRating = parseInt(star.dataset.value);
+      stars.forEach(s => {
+        s.textContent = parseInt(s.dataset.value) <= spotSelectedRating ? '★' : '☆';
+        s.style.color = parseInt(s.dataset.value) <= spotSelectedRating ? '#ffc107' : '#ccc';
+      });
+    });
+  });
+}
+
+async function renderSpotReviews(spotId) {
+  const container = document.getElementById('spotReviewsList');
+  const form = document.getElementById('spotReviewForm');
+  const note = document.getElementById('reviewLoginNote');
+  if (!container) return;
+
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  if (isLoggedIn && form && note) {
+    form.style.display = 'block';
+    note.style.display = 'none';
+  }
+
+  container.innerHTML = '<p>Loading reviews...</p>';
+  try {
+    const res = await fetch(`${API_BASE}/api/spots/${spotId}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.reviews.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted); text-align:center; padding:20px;">No reviews for this spot yet. Be the first!</p>';
+      } else {
+        container.innerHTML = data.reviews.map(r => `
+          <div class="review-card" style="margin-bottom:15px; padding:15px; background:rgba(0,0,0,0.02); border-radius:10px; border:1px solid rgba(0,0,0,0.05);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+              <strong>${r.user_name}</strong>
+              <span style="color:#ffc107;">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+            </div>
+            <p style="margin:0; font-size:14px; color:#555;">${r.text}</p>
+            <small style="color:#999;">${new Date(r.created_at).toLocaleDateString()}</small>
+          </div>
+        `).join('');
+      }
+    }
+  } catch (e) {
+    container.innerHTML = '<p>Error loading reviews.</p>';
+  }
+}
+
+async function submitSpotReview() {
+  if (!currentSelectedSpot) return;
+  const token = localStorage.getItem('token');
+  const text = document.getElementById('spotReviewText').value.trim();
+  if (!text) { alert('Please write something'); return; }
+  if (spotSelectedRating === 0) { alert('Please select a rating'); return; }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/user/reviews`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        spot_id: currentSelectedSpot.id,
+        rating: spotSelectedRating,
+        text: text
+      })
+    });
+    if (res.ok) {
+      document.getElementById('spotReviewText').value = '';
+      spotSelectedRating = 0;
+      document.querySelectorAll('#spotStarRating .star').forEach(s => s.textContent = '☆');
+      renderSpotReviews(currentSelectedSpot.id);
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Failed to submit review');
+    }
+  } catch (err) { alert('Network error'); }
+}
+
+async function saveCurrentSpot() {
+  if (!currentSelectedSpot) return;
+  saveSpot(currentSelectedSpot.id);
+}
+
+async function saveSpot(spotId) {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('Please login to save spots to your dashboard.');
+    window.location.href = 'login.html';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/user/saved-spots/${spotId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('Spot saved to your dashboard!');
+      updateSaveButtonState(spotId);
+    } else {
+      alert(data.error || 'Failed to save spot');
+    }
+  } catch (err) { alert('Connection error'); }
+}
+
+async function updateSaveButtonState(spotId) {
+  const btn = document.getElementById('saveSpotBtn');
+  if (!btn) return;
+  
+  const token = localStorage.getItem('token');
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/user/saved-spots`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const isSaved = data.spots.some(s => s.id === spotId);
+      if (isSaved) {
+        btn.innerHTML = '<i class="fas fa-heart"></i> Saved';
+        btn.classList.replace('secondary', 'primary');
+        btn.onclick = () => removeSavedSpot(spotId);
+      } else {
+        btn.innerHTML = '<i class="far fa-heart"></i> Save Spot';
+        btn.classList.replace('primary', 'secondary');
+        btn.onclick = () => saveCurrentSpot();
+      }
+    }
+  } catch (e) {}
+}
+
+async function removeSavedSpot(spotId) {
+  const token = localStorage.getItem('token');
+  try {
+    const res = await fetch(`${API_BASE}/api/user/saved-spots/${spotId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      updateSaveButtonState(spotId);
+    }
+  } catch (e) {}
+}
+
 // Initialize auth check and star rating on page load
 document.addEventListener('DOMContentLoaded', () => {
-  checkLogin();
+  initializePage();
   setupStarRating();
   setupHomepageStarRating();
+  setupSpotStarRating();
   updateCheckLogin();
 });

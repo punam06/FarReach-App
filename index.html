@@ -213,7 +213,10 @@
         <article class="result-card" id="resultCard">
           <div class="result-visual" id="resultVisual"></div>
           <div class="result-copy">
-            <h3 id="resultName">Destination Name</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <h3 id="resultName" style="margin:0;">Destination Name</h3>
+              <button class="button secondary" id="saveSpotBtn" onclick="saveCurrentSpot()" style="padding:6px 12px; font-size:14px;"><i class="far fa-heart"></i> Save Spot</button>
+            </div>
             <p id="resultDesc">Destination description will appear here.</p>
 
             <div class="detail-list">
@@ -288,7 +291,8 @@
               <button class="tab-button" onclick="showTab('map', this)">🗺️ Map</button>
               <button class="tab-button" onclick="showTab('route', this)">🚌 Route</button>
               <button class="tab-button" onclick="showTab('hotel', this)">🏨 Hotel</button>
-              <button class="tab-button" onclick="showTab('guide', this)">👥 Guide</button>
+               <button class="tab-button" onclick="showTab('guide', this)">👥 Guide</button>
+              <button class="tab-button" onclick="showTab('reviews', this)">⭐ Reviews</button>
               <button class="tab-button" onclick="showTab('history', this)">📜 History</button>
             </div>
 
@@ -398,10 +402,32 @@
                 </div>
               </div>
 
-              <div id="guide-tab" class="tab-pane">
+               <div id="guide-tab" class="tab-pane">
                 <div class="guide-section">
                   <h4>Available Local Guides</h4>
                   <div class="guide-list" id="guideList"></div>
+                </div>
+              </div>
+              
+              <div id="reviews-tab" class="tab-pane">
+                <div class="review-section">
+                  <h4>Guest Reviews</h4>
+                  <div id="spotReviewsList" style="margin-bottom:20px;"></div>
+                  <div class="spot-review-form" id="spotReviewForm" style="display:none; background:rgba(0,0,0,0.03); padding:20px; border-radius:12px;">
+                    <h5>Share Your Experience</h5>
+                    <div class="star-rating" id="spotStarRating" style="margin-bottom:10px;">
+                      <span class="star" data-value="1">☆</span>
+                      <span class="star" data-value="2">☆</span>
+                      <span class="star" data-value="3">☆</span>
+                      <span class="star" data-value="4">☆</span>
+                      <span class="star" data-value="5">☆</span>
+                    </div>
+                    <textarea id="spotReviewText" placeholder="How was your visit?" class="modal-input" style="height:100px; margin-bottom:12px;"></textarea>
+                    <button class="button primary" onclick="submitSpotReview()">Post Review</button>
+                  </div>
+                  <div id="reviewLoginNote" style="text-align:center; padding:20px; color:var(--muted);">
+                    Please <a href="login.html" style="color:var(--primary);">login</a> to leave a review.
+                  </div>
                 </div>
               </div>
 
