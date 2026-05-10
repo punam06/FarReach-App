@@ -176,10 +176,14 @@
 
     document.querySelectorAll('.sidebar-link[data-page]').forEach(function(link) {
       link.addEventListener('click', function() {
+        var pageId = 'page-' + link.dataset.page;
+        var targetPage = document.getElementById(pageId);
+        if (!targetPage) return;
+        
         document.querySelectorAll('.sidebar-link').forEach(function(l) { l.classList.remove('active'); });
         link.classList.add('active');
         document.querySelectorAll('.page-section').forEach(function(s) { s.classList.remove('active'); });
-        document.getElementById('page-' + link.dataset.page).classList.add('active');
+        targetPage.classList.add('active');
         loadPage(link.dataset.page);
         document.querySelector('.sidebar').classList.remove('open');
       });
@@ -199,13 +203,13 @@
     async function loadStats() {
       try {
         var res = await fetch(API + '/admin/stats', { headers: getHeaders() });
-        if (res.status === 403) { showToast('Access denied', 'error'); logout(); return; }
+        if (res.status === 403 || res.status === 401) { logout(); return; }
         var data = await res.json();
-        document.getElementById('stat-users').textContent = data.totalUsers;
-        document.getElementById('stat-spots').textContent = data.totalSpots;
-        document.getElementById('stat-reviews').textContent = data.totalReviews;
-        document.getElementById('stat-pending').textContent = data.pendingApprovals;
-      } catch (e) { showToast('Failed to load stats', 'error'); }
+        document.getElementById('stat-users').textContent = data.totalUsers || 0;
+        document.getElementById('stat-spots').textContent = data.totalSpots || 0;
+        document.getElementById('stat-reviews').textContent = data.totalReviews || 0;
+        document.getElementById('stat-pending').textContent = data.pendingApprovals || 0;
+      } catch (e) { console.error(e); }
     }
 
     // SPOTS
@@ -213,13 +217,13 @@
       try {
         var res = await fetch(API + '/admin/spots', { headers: getHeaders() });
         var data = await res.json();
-        allSpots = data.spots;
+        allSpots = data.spots || [];
         var tb = document.getElementById('spots-table');
-        if (data.spots.length === 0) { tb.innerHTML = '<tr><td colspan="6" class="empty-state">No spots found</td></tr>'; return; }
-        tb.innerHTML = data.spots.map(function(s) {
+        if (allSpots.length === 0) { tb.innerHTML = '<tr><td colspan="6" class="empty-state">No spots found</td></tr>'; return; }
+        tb.innerHTML = allSpots.map(function(s) {
           return '<tr><td><img src="' + spotImage(s.image) + '" onerror="this.style.display=\'none\'"></td><td>' + s.name + '</td><td>' + (s.division_name || '-') + '</td><td>' + (s.district_name || '-') + '</td><td><span class="badge ' + (s.budget_category === 'High' ? 'badge-warning' : 'badge-success') + '">' + s.budget_category + '</span></td><td><button class="btn-sm edit" onclick="editSpot(' + s.id + ')"><i class="fas fa-edit"></i></button> <button class="btn-sm delete" onclick="deleteSpot(' + s.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
         }).join('');
-      } catch (e) { showToast('Failed to load spots', 'error'); }
+      } catch (e) { console.error(e); showToast('Failed to load spots', 'error'); }
     }
 
     async function openSpotModal(id) {
@@ -231,6 +235,8 @@
       document.getElementById('spot-budget').value = 'Low';
       document.getElementById('spot-image').value = '';
       document.getElementById('spot-modal-title').innerHTML = '<i class="fas fa-map-marker-alt"></i> ' + (id ? 'Edit' : 'Add') + ' Spot';
+      document.getElementById('spot-modal').classList.add('active');
+      
       await loadSpotSelects();
       if (id) {
         var spot = allSpots.find(function(s) { return s.id === id; });
@@ -245,7 +251,6 @@
           if (spot.district_id) document.getElementById('spot-district').value = spot.district_id;
         }
       }
-      document.getElementById('spot-modal').classList.add('active');
     }
     function editSpot(id) { openSpotModal(id); }
 
@@ -317,8 +322,8 @@
         var distRes = await fetch(API + '/admin/districts', { headers: getHeaders() });
         var divData = await divRes.json();
         var distData = await distRes.json();
-        allDivisions = divData.divisions;
-        allDistricts = distData.districts;
+        allDivisions = divData.divisions || [];
+        allDistricts = distData.districts || [];
         document.getElementById('divisions-table').innerHTML = allDivisions.map(function(d) { return '<tr><td>' + d.name + '</td><td><button class="btn-sm edit" onclick="editDivision(' + d.id + ',\'' + d.name.replace(/'/g, "\\'") + '\')"><i class="fas fa-edit"></i></button> <button class="btn-sm delete" onclick="deleteDivision(' + d.id + ')"><i class="fas fa-trash"></i></button></td></tr>'; }).join('');
         document.getElementById('districts-table').innerHTML = allDistricts.map(function(d) { return '<tr><td>' + d.name + '</td><td>' + (d.division_name || '-') + '</td><td><button class="btn-sm edit" onclick="editDistrict(' + d.id + ',\'' + d.name.replace(/'/g, "\\'") + '\',' + d.division_id + ')"><i class="fas fa-edit"></i></button> <button class="btn-sm delete" onclick="deleteDistrict(' + d.id + ')"><i class="fas fa-trash"></i></button></td></tr>'; }).join('');
       } catch (e) { showToast('Failed to load', 'error'); }
@@ -399,6 +404,8 @@
       document.getElementById('guide-price').value = '';
       document.getElementById('guide-contact').value = '';
       document.getElementById('guide-modal-title').innerHTML = '<i class="fas fa-user-tie"></i> ' + (id ? 'Edit' : 'Add') + ' Guide';
+      document.getElementById('guide-modal').classList.add('active');
+      
       try {
         var res = await fetch(API + '/admin/spots', { headers: getHeaders() });
         var data = await res.json();
@@ -411,7 +418,8 @@
         try {
           var res2 = await fetch(API + '/admin/guides', { headers: getHeaders() });
           var data2 = await res2.json();
-          var guide = data2.guides.find(function(g) { return g.id === id; });
+          var guides = data2.guides || [];
+          var guide = guides.find(function(g) { return g.id === id; });
           if (guide) {
             document.getElementById('guide-id').value = guide.id;
             document.getElementById('guide-name').value = guide.name;
@@ -425,7 +433,6 @@
           }
         } catch (e) {}
       }
-      document.getElementById('guide-modal').classList.add('active');
     }
     function editGuide(id) { openGuideModal(id); }
 
