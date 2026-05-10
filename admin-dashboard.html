@@ -158,6 +158,7 @@
     const API = (window.location.origin === 'null' || window.location.origin.startsWith('file') || window.location.port === '5500' || window.location.port === '5501') ? 'http://127.0.0.1:3000/api' : window.location.origin + '/api';
     console.log('Admin Dashboard API URL:', API);
     let currentUser = null, allDivisions = [], allDistricts = [], allSpots = [];
+    let refreshInterval = null;
 
     function checkAuth() {
       const token = localStorage.getItem('token'), user = localStorage.getItem('user');
@@ -185,6 +186,14 @@
         document.querySelectorAll('.page-section').forEach(function(s) { s.classList.remove('active'); });
         targetPage.classList.add('active');
         loadPage(link.dataset.page);
+        
+        // Setup auto-refresh for dynamic updates
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(function() {
+          console.log('Auto-refreshing page:', link.dataset.page);
+          loadPage(link.dataset.page);
+        }, 15000); // Refresh every 15 seconds
+
         document.querySelector('.sidebar').classList.remove('open');
       });
     });
@@ -503,14 +512,24 @@
     // REVIEWS
     async function loadAdminReviews() {
       try {
+        console.log('Loading admin reviews...');
         var res = await fetch(API + '/admin/reviews', { headers: getHeaders() });
         var data = await res.json();
+        console.log('Admin reviews data:', data);
         var tb = document.getElementById('reviews-table');
-        if (!data.reviews || data.reviews.length === 0) { tb.innerHTML = '<tr><td colspan="6" class="empty-state">No reviews</td></tr>'; return; }
+        if (!data.reviews || data.reviews.length === 0) { 
+          tb.innerHTML = '<tr><td colspan="6" class="empty-state">No reviews found in database.</td></tr>'; 
+          return; 
+        }
         tb.innerHTML = data.reviews.map(function(r) {
-          return '<tr><td>' + (r.user_name || 'Unknown User') + '</td><td>' + (r.spot_name || '<span style="color:var(--muted);font-style:italic;">General Platform</span>') + '</td><td>' + starsHTML(r.rating) + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.text || '-') + '</td><td>' + new Date(r.created_at).toLocaleDateString() + '</td><td><button class="btn-sm delete" onclick="deleteAdminReview(' + r.id + ')"><i class="fas fa-trash"></i> Delete</button></td></tr>';
+          var userStr = r.user_name ? r.user_name : (r.user_email ? r.user_email : 'Deleted User');
+          var spotStr = r.spot_name ? r.spot_name : '<span style="color:var(--muted);font-style:italic;">General Platform</span>';
+          return '<tr><td>' + userStr + '</td><td>' + spotStr + '</td><td>' + starsHTML(r.rating) + '</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">' + (r.text || '-') + '</td><td>' + new Date(r.created_at).toLocaleDateString() + '</td><td><button class="btn-sm delete" onclick="deleteAdminReview(' + r.id + ')"><i class="fas fa-trash"></i> Delete</button></td></tr>';
         }).join('');
-      } catch (e) { showToast('Failed to load', 'error'); }
+      } catch (e) { 
+        console.error('Failed to load reviews:', e);
+        showToast('Failed to load reviews', 'error'); 
+      }
     }
 
     async function deleteAdminReview(id) {
