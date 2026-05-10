@@ -51,8 +51,18 @@ router.post('/reviews', authenticateToken, async (req, res) => {
       const [existing] = await pool.query('SELECT id FROM reviews WHERE user_id = ? AND spot_id = ?', [req.user.id, spot_id]);
       if (existing.length > 0) return res.status(400).json({ error: 'You already reviewed this spot.' });
       
-      const [bookings] = await pool.query('SELECT id FROM bookings WHERE user_id = ? AND spot_id = ? AND status = "confirmed"', [req.user.id, spot_id]);
-      if (bookings.length === 0) return res.status(403).json({ error: 'You can only review a spot after having a confirmed booking for it.' });
+      // Fallback: Check for spot_id OR check if target_name matches spot name
+      const [spot] = await pool.query('SELECT name FROM spots WHERE id = ?', [spot_id]);
+      const spotName = spot.length > 0 ? spot[0].name : null;
+      
+      const [bookings] = await pool.query(
+        'SELECT id FROM bookings WHERE user_id = ? AND (spot_id = ? OR target_name = ?) AND status = "confirmed"', 
+        [req.user.id, spot_id, spotName]
+      );
+      
+      if (bookings.length === 0) {
+        return res.status(403).json({ error: 'You can only review a spot after having a confirmed booking (Hotel/Guide/etc) for it.' });
+      }
     }
     await pool.query('INSERT INTO reviews (user_id, spot_id, rating, text) VALUES (?, ?, ?, ?)', [req.user.id, spot_id || null, rating, text || '']);
     res.json({ message: 'Review submitted successfully.' });
