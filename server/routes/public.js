@@ -40,8 +40,8 @@ router.get('/weather', async (req, res) => {
 
     const key = process.env.OPENWEATHER_API_KEY;
     if (!key) {
-    // Return mock weather data for development when API key is missing
-    return res.json(mockWeatherData(district));
+    // Return mock forecast data for development when API key is missing
+    return res.json({ district, date, data: mockForecastData(district) });
   }
 
     const q = encodeURIComponent(`${district},BD`);
@@ -67,8 +67,8 @@ router.get('/forecast', async (req, res) => {
 
     const key = process.env.OPENWEATHER_API_KEY;
     if (!key) {
-    // Return mock weather data for development when API key is missing
-    return res.json(mockWeatherData(district));
+    // Return mock forecast data for development when API key is missing
+    return res.json({ district, date, data: mockForecastData(district) });
   }
 
     const q = encodeURIComponent(`${district},BD`);
