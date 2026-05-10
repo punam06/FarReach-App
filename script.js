@@ -166,13 +166,239 @@ let allSpots = [...spots];
 let currentCategory = 'All';
 let currentSelectedSpot = null;
 
-// Determine API base URL: if page is served from the same Express server (port 3000)
-// use relative paths; otherwise (e.g., VS Code Live Server on port 5500) use absolute URL.
+// Map each spot name to its corresponding image file in "spot pictures/"
+const spotImages = {
+  "Cox's Bazar Beach": "Coxs bazar.jpg",
+  "Sundarbans": "Sundarban_Tiger.jpg",
+  "Saint Martin Island": "Saint martin.jpg",
+  "Rangamati": "Rangamati.jpg",
+  "Bandarban": "Bandarban.jpg",
+  "Sylhet Tea Gardens": "tea garden.jpg",
+  "Sreemangal": "SRIMANGAL.jpg",
+  "Jaflong": "Jaflang.jpg",
+  "Lawachara National Park": "LAWYACHORA GARDEN.jpg",
+  "Kuakata Beach": "Kuyakata.jpg",
+  "Chittagong Hill Tracts": "Chittagong hill tracks.jpg",
+  "Sonargaon": "Sonargaon .jpg",
+  "Lalbagh Fort": "Lalbagh fort.jpg",
+  "Ahsan Manzil": "ahsan-monjil.jpg",
+  "Nilgiri": "Nilgiri.jpg",
+  "Ramsagar National Park": "Ramsagar national park.jpg",
+  "Bisnakandi": "Bishankandi-4.jpg",
+  "Foy's Lake": "Foys lake.jpg",
+  "Patenga Beach": "Potenga sea Beach .jpg",
+  "Tajhat Palace": "Tazhat palace.jpg"
+};
+
+// Use same-origin when served by backend; fallback to localhost:3000 for static servers.
 const API_BASE = (location.port && location.port !== '3000') ? 'http://localhost:3000' : '';
+
+const divisionDistrictMap = {
+  Dhaka: ['Dhaka', 'Narayanganj', 'Gazipur', 'Manikganj', 'Munshiganj', 'Narsingdi', 'Sonargaon'],
+  Chattogram: ['Chittagong', "Cox's Bazar", 'Rangamati', 'Bandarban', 'Khagrachhari', 'Comilla', 'Feni', 'Noakhali'],
+  Sylhet: ['Sylhet', 'Moulvibazar', 'Habiganj', 'Sunamganj'],
+  Rangpur: ['Rangpur', 'Dinajpur', 'Kurigram', 'Lalmonirhat', 'Nilphamari', 'Gaibandha', 'Thakurgaon', 'Panchagarh'],
+  Barishal: ['Barishal', 'Patuakhali', 'Barguna', 'Jhalokati', 'Pirojpur', 'Bhola'],
+  Jessore: ['Jessore', 'Khulna', 'Satkhira', 'Bagerhat', 'Narail', 'Magura', 'Jhenaidah', 'Chuadanga', 'Kushtia', 'Meherpur'],
+  Rajshahi: ['Rajshahi', 'Natore', 'Naogaon', 'Chapainawabganj', 'Pabna', 'Bogra', 'Joypurhat', 'Sirajganj'],
+  Mymensingh: ['Mymensingh', 'Jamalpur', 'Sherpur', 'Netrokona', 'Kishoreganj', 'Tangail']
+};
+
+const districtToDivision = Object.entries(divisionDistrictMap).reduce((lookup, [division, districts]) => {
+  districts.forEach(district => {
+    lookup[district.toLowerCase()] = division;
+  });
+  return lookup;
+}, {});
+
+const spotFilterProfiles = {
+  Beach: { budget: 'high', road: 'easy', opportunity: 'leisure' },
+  Wildlife: { budget: 'low', road: 'moderate', opportunity: 'wildlife' },
+  Island: { budget: 'high', road: 'moderate', opportunity: 'leisure' },
+  Mountain: { budget: 'high', road: 'challenging', opportunity: 'adventure' },
+  Nature: { budget: 'low', road: 'easy', opportunity: 'eco' },
+  Historical: { budget: 'low', road: 'easy', opportunity: 'culture' },
+  Lake: { budget: 'low', road: 'easy', opportunity: 'family' }
+};
+
+const spotFilterOverrides = {
+  Sundarbans: { road: 'moderate', opportunity: 'wildlife' },
+  'Saint Martin Island': { road: 'moderate', opportunity: 'leisure' },
+  Nilgiri: { budget: 'high', road: 'challenging', opportunity: 'adventure' },
+  Bandraban: { budget: 'high', road: 'challenging', opportunity: 'adventure' },
+  'Chittagong Hill Tracts': { budget: 'high', road: 'challenging', opportunity: 'adventure' }
+};
+
+const budgetRates = {
+  transport: { bus: 900, train: 1200, launch: 750, air: 6500 },
+  hotel: { budget: 1800, standard: 3500, premium: 7000 },
+  guide: { budget: 2800, standard: 4200, premium: 6500 },
+  activity: { leisure: 1200, culture: 1000, adventure: 1800, eco: 1100, wildlife: 1500, family: 900 }
+};
+
+// ==== DIVISION SECTION ====
+
+// List of 8 divisions as requested
+const divisions = ['Dhaka', 'Chattogram', 'Sylhet', 'Rangpur', 'Barishal', 'Jessore', 'Rajshahi', 'Mymensingh'];
+
+let currentDivision = 'All';
+let currentBudgetFilter = 'All';
+let currentRoadFilter = 'All';
+let currentOpportunityFilter = 'All';
+
+function renderDivisionCards() {
+  const grid = document.getElementById('divisionGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  divisions.forEach(div => {
+    const spotCount = getSpotsForDivision(div).length;
+    const card = document.createElement('article');
+    card.className = 'division-card';
+    card.innerHTML = `
+      <h3>${div}</h3>
+      <p>${spotCount} destination${spotCount !== 1 ? 's' : ''}</p>
+    `;
+    card.style.cursor = 'pointer';
+    card.onclick = () => {
+      focusDivision(div);
+    };
+    grid.appendChild(card);
+  });
+}
+
+function getSpotDivision(spot) {
+  return districtToDivision[spot.district.toLowerCase()] || 'All';
+}
+
+function getSpotFilterProfile(spot) {
+  const baseProfile = spotFilterProfiles[spot.category] || { budget: 'low', road: 'easy', opportunity: 'leisure' };
+  return { ...baseProfile, ...(spotFilterOverrides[spot.name] || {}) };
+}
+
+function getSpotsForDivision(divisionName) {
+  return allSpots.filter(spot => getSpotDivision(spot) === divisionName);
+}
+
+function focusDivision(divisionName) {
+  currentDivision = divisionName;
+  currentCategory = 'All';
+  currentBudgetFilter = 'All';
+  currentRoadFilter = 'All';
+  currentOpportunityFilter = 'All';
+
+  const searchInput = document.getElementById('search');
+  const divisionSearch = document.getElementById('districtSearch');
+  const budgetFilter = document.getElementById('budgetFilter');
+  const roadFilter = document.getElementById('roadFilter');
+  const opportunityFilter = document.getElementById('opportunityFilter');
+  if (searchInput) searchInput.value = '';
+  if (divisionSearch) divisionSearch.value = divisionName;
+  if (budgetFilter) budgetFilter.value = 'All';
+  if (roadFilter) roadFilter.value = 'All';
+  if (opportunityFilter) opportunityFilter.value = 'All';
+
+  const firstSpot = getSpotsForDivision(divisionName)[0];
+  render();
+  if (firstSpot) selectSpot(firstSpot);
+
+  const routeSection = document.getElementById('route');
+  if (routeSection) {
+    routeSection.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+function searchDivisions() {
+  const searchInput = document.getElementById('districtSearch');
+  const query = (searchInput?.value || '').toLowerCase().trim();
+  const grid = document.getElementById('divisionGrid');
+  if (!grid) return;
+  const filtered = divisions.filter(d => !query || d.toLowerCase().includes(query));
+  grid.innerHTML = '';
+  filtered.forEach(div => {
+    const card = document.createElement('article');
+    card.className = 'division-card';
+    card.innerHTML = `<h3>${div}</h3><p>${getSpotsForDivision(div).length} destination${getSpotsForDivision(div).length !== 1 ? 's' : ''}</p>`;
+    card.style.cursor = 'pointer';
+    card.onclick = () => focusDivision(div);
+    grid.appendChild(card);
+  });
+  if (filtered.length === 0) {
+    grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No divisions found matching your search.</p>';
+  }
+}
+
+// ==== DISTRICT FUNCTIONS (kept for backward compatibility) ====
+function renderDistrictCards() {
+  // Original district rendering retained for compatibility; not used in UI.
+  const grid = document.getElementById('districtGrid');
+  if (!grid) return;
+  const districtNames = Object.keys(window.districtData || {});
+  grid.innerHTML = '';
+  districtNames.forEach(district => {
+    const districtSpots = window.districtData[district];
+    const card = document.createElement('article');
+    card.className = 'district-card';
+    card.innerHTML = `
+      <div class="district-card-header">
+        <h3>${district}</h3>
+        <span class="spot-count">${districtSpots.length} spot${districtSpots.length !== 1 ? 's' : ''}</span>
+      </div>
+      <p class="district-categories">${[...new Set(districtSpots.map(s => s.category))].join(', ')}</p>
+    `;
+    card.style.cursor = 'pointer';
+    card.onclick = () => {
+      const searchInput = document.getElementById('search');
+      if (searchInput) {
+        searchInput.value = district;
+        render();
+      }
+      document.getElementById('discover').scrollIntoView({ behavior: 'smooth' });
+    };
+    grid.appendChild(card);
+  });
+}
+
+function searchDistricts() {
+  const searchInput = document.getElementById('districtSearch');
+  const query = (searchInput?.value || '').toLowerCase().trim();
+  const grid = document.getElementById('districtGrid');
+  if (!grid) return;
+  const districtNames = Object.keys(window.districtData || {});
+  const filtered = districtNames.filter(d => {
+    if (!query) return true;
+    const districtSpots = window.districtData[d];
+    return d.toLowerCase().includes(query) || districtSpots.some(s => s.name.toLowerCase().includes(query));
+  });
+  grid.innerHTML = '';
+  filtered.forEach(district => {
+    const districtSpots = window.districtData[district];
+    const card = document.createElement('article');
+    card.className = 'district-card';
+    card.innerHTML = `
+      <div class="district-card-header">
+        <h3>${district}</h3>
+        <span class="spot-count">${districtSpots.length} spot${districtSpots.length !== 1 ? 's' : ''}</span>
+      </div>
+      <p class="district-categories">${[...new Set(districtSpots.map(s => s.category))].join(', ')}</p>
+    `;
+    card.style.cursor = 'pointer';
+    card.onclick = () => {
+      const mainSearch = document.getElementById('search');
+      if (mainSearch) {
+        mainSearch.value = district;
+        render();
+      }
+      document.getElementById('discover').scrollIntoView({ behavior: 'smooth' });
+    };
+    grid.appendChild(card);
+  });
+  if (filtered.length === 0) {
+    grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No districts found matching your search.</p>';
+  }
+}
 
 // ==== WEATHER FUNCTIONS ====
 
-// Fetch current weather for the hero sidebar card
 async function fetchWeatherFor(district) {
   const card = document.getElementById('weatherCard');
   const iconEl = document.getElementById('heroWeatherIcon');
@@ -182,7 +408,7 @@ async function fetchWeatherFor(district) {
 
   if (!card || !tempEl || !descEl || !sugEl || !iconEl) return;
 
-  // Show card with loading state
+  // Show card and loading placeholders
   card.style.display = 'block';
   tempEl.textContent = '...';
   descEl.textContent = 'Loading...';
@@ -190,9 +416,7 @@ async function fetchWeatherFor(district) {
 
   try {
     const url = `${API_BASE}/api/weather?district=${encodeURIComponent(district)}`;
-    console.log('Fetching weather from:', url);
     const res = await fetch(url);
-    console.log('Weather response status:', res.status);
     if (!res.ok) throw new Error('Weather lookup failed');
     const data = await res.json();
 
@@ -205,19 +429,25 @@ async function fetchWeatherFor(district) {
     iconEl.textContent = chooseIcon(main, desc);
     sugEl.textContent = travelSuggestion(main.toLowerCase(), temp);
   } catch (err) {
-    console.error('Weather fetch error:', err);
-    tempEl.textContent = '--°C';
-    descEl.textContent = 'Unavailable';
-    iconEl.textContent = '⚠️';
-    sugEl.textContent = 'Weather data unavailable: ' + err.message;
+    // Fallback to dummy data when server is unreachable or returns error
+    console.warn('Weather fetch failed, using fallback data:', err.message);
+    const fallback = {
+      main: { temp: 27 },
+      weather: [{ main: 'Clear', description: 'clear sky' }]
+    };
+    const temp = Math.round(fallback.main.temp);
+    const desc = fallback.weather[0].description;
+    const main = fallback.weather[0].main;
+    tempEl.textContent = `${temp}°C`;
+    descEl.textContent = desc.charAt(0).toUpperCase() + desc.slice(1);
+    iconEl.textContent = chooseIcon(main, desc);
+    sugEl.textContent = travelSuggestion(main.toLowerCase(), temp) + ' (fallback)';
   }
 }
 
-// Fetch forecast for the tab weather section
 async function fetchForecastForDate(district, dateVal) {
-  // Validate that the requested date is within the next 5 days (OpenWeatherMap limit)
   const now = new Date();
-  const maxDate = new Date(now.getTime() + 5 * 86400000); // 5 days from now
+  const maxDate = new Date(now.getTime() + 5 * 86400000);
   const selected = new Date(dateVal);
   if (isNaN(selected.getTime())) {
     const sugEl = document.getElementById('tabWeatherSuggestion');
@@ -237,7 +467,6 @@ async function fetchForecastForDate(district, dateVal) {
 
   if (!tempEl || !descEl || !sugEl || !iconEl) return;
 
-  // Show loading state
   tempEl.textContent = '...';
   descEl.textContent = 'Loading forecast...';
   sugEl.textContent = '';
@@ -250,7 +479,6 @@ async function fetchForecastForDate(district, dateVal) {
 
     const data = result.data || result;
 
-    // Process forecast data
     const forecastDate = new Date(dateVal + 'T00:00:00');
     const start = forecastDate.getTime();
     const end = start + 24 * 60 * 60 * 1000;
@@ -291,7 +519,6 @@ async function fetchForecastForDate(district, dateVal) {
   }
 }
 
-// Get weather for the tab section (called by the Get Forecast button)
 function getTabWeather() {
   const district = document.getElementById('resultDistrict').textContent;
   const dateInput = document.getElementById('tripDate');
@@ -306,12 +533,10 @@ function getTabWeather() {
   if (dateVal) {
     fetchForecastForDate(district, dateVal);
   } else {
-    // No date selected - fetch current weather for the tab
     fetchCurrentWeatherForTab(district);
   }
 }
 
-// Fetch current weather and display in the tab section
 async function fetchCurrentWeatherForTab(district) {
   const iconEl = document.getElementById('tabWeatherIcon');
   const tempEl = document.getElementById('tabWeatherTemp');
@@ -350,7 +575,6 @@ async function fetchCurrentWeatherForTab(district) {
   }
 }
 
-// Utility functions
 function chooseIcon(main, desc) {
   const m = (main || '').toLowerCase();
   if (m.includes('rain') || m.includes('drizzle') || m.includes('thunder')) return '🌧️';
@@ -386,48 +610,54 @@ function getTripSafety(mainLower, temp, rainChance, windKph) {
   return 'Good travel conditions — proceed as planned, but stay aware of quick weather changes.';
 }
 
-// ==== RENDER FUNCTION - Main search, filter and display ====
+// ==== RENDER FUNCTION ====
 function render() {
   const searchInput = document.getElementById('search');
   const query = (searchInput?.value || '').toLowerCase().trim();
+  currentBudgetFilter = document.getElementById('budgetFilter')?.value || currentBudgetFilter;
+  currentRoadFilter = document.getElementById('roadFilter')?.value || currentRoadFilter;
+  currentOpportunityFilter = document.getElementById('opportunityFilter')?.value || currentOpportunityFilter;
   
-  // Filter spots by search query and current category
   let filtered = allSpots;
+  filtered = filtered.filter(spot => {
+    const division = getSpotDivision(spot);
+    const profile = getSpotFilterProfile(spot);
+
+    if (query) {
+      const searchable = [spot.name, spot.district, spot.category, division, profile.opportunity].join(' ').toLowerCase();
+      if (!searchable.includes(query)) return false;
+    }
+
+    if (currentDivision !== 'All' && division !== currentDivision) return false;
+    if (currentCategory !== 'All' && spot.category !== currentCategory) return false;
+    if (currentBudgetFilter !== 'All' && profile.budget !== currentBudgetFilter) return false;
+    if (currentRoadFilter !== 'All' && profile.road !== currentRoadFilter) return false;
+    if (currentOpportunityFilter !== 'All' && profile.opportunity !== currentOpportunityFilter) return false;
+    return true;
+  });
   
-  if (query) {
-    filtered = allSpots.filter(spot => 
-      spot.name.toLowerCase().includes(query) || 
-      spot.district.toLowerCase().includes(query)
-    );
-  }
-  
-  if (currentCategory !== 'All') {
-    filtered = filtered.filter(spot => spot.category === currentCategory);
-  }
-  
-  // Update stats
   updateStats();
-  
-  // Update popular grid
   displayPopularGrid(filtered);
   
-  // Update featured card with random spot or first filtered result
   if (filtered.length > 0) {
     const randomIndex = Math.floor(Math.random() * filtered.length);
     displayFeatured(filtered[randomIndex]);
   }
   
-  // Update search hint
   updateSearchHint(filtered.length, query);
 }
 
 function updateStats() {
   document.getElementById('totalPlaces').textContent = allSpots.length + '+';
-  
   const districts = new Set(allSpots.map(s => s.district));
   document.getElementById('totalDistricts').textContent = districts.size + '+';
-  
-  document.getElementById('activeCategory').textContent = currentCategory;
+  const filterSummary = [];
+  if (currentDivision !== 'All') filterSummary.push(currentDivision);
+  if (currentCategory !== 'All') filterSummary.push(currentCategory);
+  if (currentBudgetFilter !== 'All') filterSummary.push(currentBudgetFilter === 'low' ? 'Low Budget' : 'High Budget');
+  if (currentRoadFilter !== 'All') filterSummary.push(currentRoadFilter);
+  if (currentOpportunityFilter !== 'All') filterSummary.push(currentOpportunityFilter);
+  document.getElementById('activeCategory').textContent = filterSummary.length ? filterSummary.join(' • ') : 'All';
 }
 
 function displayPopularGrid(filteredSpots) {
@@ -437,16 +667,20 @@ function displayPopularGrid(filteredSpots) {
   grid.innerHTML = '';
   
   filteredSpots.slice(0, 12).forEach(spot => {
+    const profile = getSpotFilterProfile(spot);
     const card = document.createElement('article');
     card.className = 'spot-card';
     card.innerHTML = `
       <div class="spot-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; height: 200px; color: white; font-size: 48px;">
-        ${getCategoryEmoji(spot.category)}
+        <img src="spot pictures/${spotImages[spot.name]}" style="width:100%;height:200px;object-fit:cover;">
       </div>
       <div class="spot-content">
         <h3>${spot.name}</h3>
         <p class="spot-district">${spot.district}</p>
-        <span class="spot-category">${spot.category}</span>
+        <div class="spot-badges">
+          <span class="spot-category">${spot.category}</span>
+          <span class="spot-budget">${profile.budget === 'high' ? 'High Budget' : 'Low Budget'}</span>
+        </div>
       </div>
     `;
     card.style.cursor = 'pointer';
@@ -466,6 +700,18 @@ function displayFeatured(spot) {
   document.getElementById('featuredName').textContent = spot.name;
   document.getElementById('featuredDistrict').textContent = spot.district;
   document.getElementById('featuredMeta').textContent = spot.category;
+
+  const featuredCard = document.getElementById('featuredCard');
+  if (featuredCard) {
+    const imageFile = spotImages[spot.name];
+    if (imageFile) {
+      const imageUrl = `spot pictures/${encodeURIComponent(imageFile)}`;
+      featuredCard.style.background = `linear-gradient(180deg, rgba(3, 12, 7, 0.28), rgba(3, 12, 7, 0.82)), url("${imageUrl}") center / cover no-repeat`;
+    } else {
+      featuredCard.style.background = 'linear-gradient(135deg, rgba(70, 201, 109, 0.25), rgba(6, 17, 11, 0.9))';
+    }
+  }
+
   document.getElementById('spotDetailLink').onclick = () => {
     selectSpot(spot);
     document.getElementById('route').scrollIntoView({ behavior: 'smooth' });
@@ -481,7 +727,6 @@ function selectSpot(spot) {
   document.getElementById('resultCategory').textContent = spot.category;
   document.getElementById('resultIndex').textContent = `#${spot.id}`;
   
-  // Add historical information
   const historyElement = document.getElementById('resultHistory');
   if (historyElement && spot.history) {
     historyElement.innerHTML = `
@@ -491,7 +736,6 @@ function selectSpot(spot) {
     historyElement.style.display = 'block';
   }
   
-  // Set background color based on category
   const visual = document.getElementById('resultVisual');
   if (visual) {
     visual.style.background = `linear-gradient(135deg, ${getCategoryColor(spot.category)} 0%, ${getCategoryColor2(spot.category)} 100%)`;
@@ -500,60 +744,134 @@ function selectSpot(spot) {
     visual.style.justifyContent = 'center';
     visual.style.fontSize = '80px';
     visual.style.minHeight = '300px';
-    visual.innerHTML = getCategoryEmoji(spot.category);
+    visual.innerHTML = '<img src="spot pictures/' + spotImages[spot.name] + '" style="width:100%;height:100%;object-fit:cover;">';
   }
+
+  updateBudgetSection(spot);
   
-  // Fetch weather for the hero sidebar card
   fetchWeatherFor(spot.district);
 
-  // Also fetch weather for the tab if it's active
   const weatherTab = document.getElementById('weather-tab');
   if (weatherTab && weatherTab.classList.contains('active')) {
     fetchCurrentWeatherForTab(spot.district);
   }
 
-  // Update map if map tab is active
   const mapTab = document.getElementById('map-tab');
   if (mapTab && mapTab.classList.contains('active')) {
     loadMap(spot.district, spot.name);
   }
 }
 
+function calculateBudgetLocally(spot, inputs) {
+  const profile = getSpotFilterProfile(spot);
+  const travelers = Math.max(1, Number(inputs.travelers) || 1);
+  const nights = Math.max(1, Number(inputs.nights) || 1);
+  const guideDays = Math.max(0, Number(inputs.guideDays) || 0);
+  const transportRate = budgetRates.transport[inputs.transportMode] || budgetRates.transport.bus;
+  const hotelRate = budgetRates.hotel[inputs.hotelTier] || budgetRates.hotel.standard;
+  const guideRate = budgetRates.guide[inputs.hotelTier] || budgetRates.guide.standard;
+  const activityRate = budgetRates.activity[profile.opportunity] || budgetRates.activity.leisure;
+
+  const tripTickets = Math.round(transportRate * travelers * (profile.budget === 'high' ? 1.2 : 1));
+  const hotelBooking = Math.round(hotelRate * nights * travelers * (profile.budget === 'high' ? 1.15 : 1));
+  const guideBooking = Math.round(guideRate * guideDays);
+  const localActivity = Math.round(activityRate * travelers);
+  const contingency = Math.round((tripTickets + hotelBooking + guideBooking + localActivity) * 0.1);
+  const total = tripTickets + hotelBooking + guideBooking + localActivity + contingency;
+
+  return {
+    spot: spot.name,
+    district: spot.district,
+    travelers,
+    nights,
+    guideDays,
+    breakdown: {
+      tripTickets,
+      hotelBooking,
+      guideBooking,
+      localActivity,
+      contingency
+    },
+    total,
+    currency: 'BDT'
+  };
+}
+
+function renderBudgetResult(result) {
+  const container = document.getElementById('budgetResult');
+  if (!container || !result) return;
+  container.innerHTML = `
+    <div class="budget-total">৳${result.total.toLocaleString()} <span>${result.currency}</span></div>
+    <div class="budget-breakdown">
+      <div><strong>Travel tickets</strong><span>৳${result.breakdown.tripTickets.toLocaleString()}</span></div>
+      <div><strong>Hotel booking</strong><span>৳${result.breakdown.hotelBooking.toLocaleString()}</span></div>
+      <div><strong>Guide booking</strong><span>৳${result.breakdown.guideBooking.toLocaleString()}</span></div>
+      <div><strong>Local activities</strong><span>৳${result.breakdown.localActivity.toLocaleString()}</span></div>
+      <div><strong>Contingency</strong><span>৳${result.breakdown.contingency.toLocaleString()}</span></div>
+    </div>
+  `;
+}
+
+async function calculateBudget() {
+  const spot = currentSelectedSpot || allSpots[0];
+  if (!spot) return;
+
+  const payload = {
+    travelers: Number(document.getElementById('budgetTravelers')?.value || 1),
+    nights: Number(document.getElementById('budgetNights')?.value || 1),
+    guideDays: Number(document.getElementById('budgetGuideDays')?.value || 0),
+    transportMode: document.getElementById('budgetTransport')?.value || 'bus',
+    hotelTier: document.getElementById('budgetHotelTier')?.value || 'standard'
+  };
+
+  try {
+    const response = await fetch(`${API_BASE}/api/spots/${spot.id}/budget-estimate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) throw new Error('Budget service unavailable');
+    const data = await response.json();
+    renderBudgetResult(data.estimate);
+  } catch (err) {
+    renderBudgetResult(calculateBudgetLocally(spot, payload));
+  }
+}
+
+function updateBudgetSection(spot) {
+  const badge = document.getElementById('budgetBadge');
+  const result = document.getElementById('budgetResult');
+  if (badge) {
+    const profile = getSpotFilterProfile(spot);
+    badge.textContent = `${profile.budget === 'high' ? 'Premium' : 'Budget'} plan`;
+  }
+  if (result) {
+    result.textContent = 'Calculating estimate...';
+  }
+  calculateBudget();
+}
+
 function getCategoryEmoji(category) {
   const emojis = {
-    'Beach': '🏖️',
-    'Wildlife': '🦁',
-    'Island': '🏝️',
-    'Mountain': '⛰️',
-    'Nature': '🌲',
-    'Historical': '🏛️',
-    'Lake': '🏞️'
+    'Beach': '🏖️', 'Wildlife': '🦁', 'Island': '🏝️',
+    'Mountain': '⛰️', 'Nature': '🌲', 'Historical': '🏛️', 'Lake': '🏞️'
   };
   return emojis[category] || '📍';
 }
 
 function getCategoryColor(category) {
   const colors = {
-    'Beach': '#FF6B6B',
-    'Wildlife': '#4ECDC4',
-    'Island': '#45B7D1',
-    'Mountain': '#96CEB4',
-    'Nature': '#FFEAA7',
-    'Historical': '#DDA0DD',
-    'Lake': '#87CEEB'
+    'Beach': '#FF6B6B', 'Wildlife': '#4ECDC4', 'Island': '#45B7D1',
+    'Mountain': '#96CEB4', 'Nature': '#FFEAA7', 'Historical': '#DDA0DD', 'Lake': '#87CEEB'
   };
   return colors[category] || '#667eea';
 }
 
 function getCategoryColor2(category) {
   const colors = {
-    'Beach': '#FF8E72',
-    'Wildlife': '#44A08D',
-    'Island': '#2E8B9E',
-    'Mountain': '#6FA876',
-    'Nature': '#FFD93D',
-    'Historical': '#DA70D6',
-    'Lake': '#6BA3C0'
+    'Beach': '#FF8E72', 'Wildlife': '#44A08D', 'Island': '#2E8B9E',
+    'Mountain': '#6FA876', 'Nature': '#FFD93D', 'Historical': '#DA70D6', 'Lake': '#6BA3C0'
   };
   return colors[category] || '#764ba2';
 }
@@ -561,7 +879,6 @@ function getCategoryColor2(category) {
 function updateSearchHint(count, query) {
   const hint = document.getElementById('stats');
   if (!hint) return;
-  
   if (query) {
     hint.textContent = `Found ${count} destination${count !== 1 ? 's' : ''} matching "${query}"`;
   } else {
@@ -570,6 +887,15 @@ function updateSearchHint(count, query) {
 }
 
 function initializePage() {
+  // Initialize district data structures
+  window.districtData = {};
+  spots.forEach(s => {
+    if (!window.districtData[s.district]) window.districtData[s.district] = [];
+    window.districtData[s.district].push(s);
+  });
+  // Render district cards
+  renderDivisionCards();
+
   // Set date picker constraints for forecast (today to +5 days)
   const dateInput = document.getElementById('tripDate');
   if (dateInput) {
@@ -620,7 +946,6 @@ function initializePage() {
       const card = document.getElementById('weatherCard');
       if (card) {
         if (card.style.display === 'none') {
-          // Show and fetch weather for current spot
           if (currentSelectedSpot) {
             fetchWeatherFor(currentSelectedSpot.district);
           } else {
@@ -652,30 +977,24 @@ document.addEventListener('DOMContentLoaded', initializePage);
 
 // ==== TAB NAVIGATION FUNCTION ====
 function showTab(tabName, btnElement) {
-  // Hide all tab panes
   const tabPanes = document.querySelectorAll('.tab-pane');
   tabPanes.forEach(pane => pane.classList.remove('active'));
   
-  // Remove active class from all tab buttons
   const tabButtons = document.querySelectorAll('.tab-button');
   tabButtons.forEach(button => button.classList.remove('active'));
   
-  // Show selected tab pane
   const selectedTab = document.getElementById(`${tabName}-tab`);
   if (selectedTab) {
     selectedTab.classList.add('active');
   }
   
-  // Add active class to clicked button
   if (btnElement) {
     btnElement.classList.add('active');
   }
   
-  // Initialize tab-specific content
   initializeTabContent(tabName);
 }
 
-// ==== TAB CONTENT INITIALIZATION ====
 function initializeTabContent(tabName) {
   const district = document.getElementById('resultDistrict')?.textContent || '-';
   
@@ -747,40 +1066,11 @@ function loadRouteOptions(district) {
   const routeOptions = document.getElementById('routeOptions');
   if (!routeOptions) return;
   
-  // Mock route data
   const routes = [
-    {
-      type: 'Bus',
-      company: 'Green Line Paribahan',
-      duration: '4-5 hours',
-      price: '৳350-450',
-      departure: 'Dhaka Gabtoli',
-      arrival: `${district} Bus Stand`
-    },
-    {
-      type: 'Train',
-      company: 'Bangladesh Railway',
-      duration: '5-6 hours',
-      price: '৳200-300',
-      departure: 'Dhaka Kamalapur',
-      arrival: `${district} Railway Station`
-    },
-    {
-      type: 'Flight',
-      company: 'Novo Air',
-      duration: '1 hour',
-      price: '৳3000-5000',
-      departure: 'Dhaka Hazrat Shahjalal',
-      arrival: `${district} Airport`
-    },
-    {
-      type: 'Private Car',
-      company: 'Rent a Car BD',
-      duration: '4-5 hours',
-      price: '৳4000-6000',
-      departure: 'Your Location',
-      arrival: `${district} Destination`
-    }
+    { type: 'Bus', company: 'Green Line Paribahan', duration: '4-5 hours', price: '৳350-450', departure: 'Dhaka Gabtoli', arrival: `${district} Bus Stand` },
+    { type: 'Train', company: 'Bangladesh Railway', duration: '5-6 hours', price: '৳200-300', departure: 'Dhaka Kamalapur', arrival: `${district} Railway Station` },
+    { type: 'Flight', company: 'Novo Air', duration: '1 hour', price: '৳3000-5000', departure: 'Dhaka Hazrat Shahjalal', arrival: `${district} Airport` },
+    { type: 'Private Car', company: 'Rent a Car BD', duration: '4-5 hours', price: '৳4000-6000', departure: 'Your Location', arrival: `${district} Destination` }
   ];
   
   routeOptions.innerHTML = routes.map(route => `
@@ -793,7 +1083,6 @@ function loadRouteOptions(district) {
     </div>
   `).join('');
 
-  // External booking links
   const externalLinks = [
     { name: 'Sohoz', url: 'https://shohoz.com' },
     { name: 'GoZayan', url: 'https://gozayan.com' },
@@ -838,7 +1127,6 @@ function searchHotels() {
   if (resultsDiv) resultsDiv.style.display = 'block';
   if (listDiv) listDiv.innerHTML = '<p style="color:var(--muted);">Searching hotels...</p>';
 
-  // Call backend API
   fetch(`${API_BASE}/api/hotels/search`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -885,37 +1173,13 @@ function searchHotels() {
 
 function generateHotelResults(type, city, people, features, nights) {
   const basePrice = people * 1500 + ((type.includes('Luxury') || type.includes('Boutique')) ? 3000 : 1000);
-  const vatRate = 0.15; // 15% VAT
-  const serviceRate = 0.10; // 10% service
+  const vatRate = 0.15;
+  const serviceRate = 0.10;
 
   const hotels = [
-    {
-      name: `${type} ${city}`,
-      type: type,
-      rating: 4.5,
-      features: features.split(',').map(f => f.trim()),
-      pricePerNight: basePrice,
-      hasCorporateRate: Math.random() > 0.5,
-      hasBankDiscount: Math.random() > 0.7
-    },
-    {
-      name: `Grand ${city} Resort`,
-      type: type,
-      rating: 4.2,
-      features: ['WiFi', 'Pool', 'Restaurant', ...features.split(',').map(f => f.trim())],
-      pricePerNight: Math.round(basePrice * 1.3),
-      hasCorporateRate: true,
-      hasBankDiscount: false
-    },
-    {
-      name: `${city} Plaza`,
-      type: 'Standard',
-      rating: 4.0,
-      features: ['WiFi', 'AC', ...features.split(',').map(f => f.trim())],
-      pricePerNight: Math.round(basePrice * 0.8),
-      hasCorporateRate: false,
-      hasBankDiscount: true
-    }
+    { name: `${type} ${city}`, type, rating: 4.5, features: features.split(',').map(f => f.trim()), pricePerNight: basePrice, hasCorporateRate: Math.random() > 0.5, hasBankDiscount: Math.random() > 0.7 },
+    { name: `Grand ${city} Resort`, type, rating: 4.2, features: ['WiFi', 'Pool', 'Restaurant', ...features.split(',').map(f => f.trim())], pricePerNight: Math.round(basePrice * 1.3), hasCorporateRate: true, hasBankDiscount: false },
+    { name: `${city} Plaza`, type: 'Standard', rating: 4.0, features: ['WiFi', 'AC', ...features.split(',').map(f => f.trim())], pricePerNight: Math.round(basePrice * 0.8), hasCorporateRate: false, hasBankDiscount: true }
   ];
 
   hotels.forEach(h => {
@@ -928,7 +1192,6 @@ function generateHotelResults(type, city, people, features, nights) {
 }
 
 function showPriceBreakdown(pricePerNight, nights, hasCorporateRate, hotelName) {
-  // Calculate using backend formula: pricePerNight already includes base, we add VAT + service
   const vat = Math.round(pricePerNight * 0.15);
   const service = Math.round(pricePerNight * 0.10);
   const subtotal = pricePerNight * nights;
@@ -990,32 +1253,10 @@ function loadGuides(district) {
   const guideList = document.getElementById('guideList');
   if (!guideList) return;
   
-  // Mock guide data
   const guides = [
-    {
-      name: 'Rahman Khan',
-      experience: '5 years',
-      rating: 4.7,
-      languages: ['Bengali', 'English', 'Hindi'],
-      specialties: ['History', 'Culture', 'Photography'],
-      price: 50,
-    },
-    {
-      name: 'Amina Begum',
-      experience: '3 years',
-      rating: 4.5,
-      languages: ['Bengali', 'English'],
-      specialties: ['Nature', 'Wildlife', 'Trekking'],
-      price: 40,
-    },
-    {
-      name: 'Mohammed Ali',
-      experience: '7 years',
-      rating: 4.9,
-      languages: ['Bengali', 'English', 'Arabic', 'Urdu'],
-      specialties: ['Religious Sites', 'Architecture', 'Local History'],
-      price: 60,
-    }
+    { name: 'Rahman Khan', experience: '5 years', rating: 4.7, languages: ['Bengali', 'English', 'Hindi'], specialties: ['History', 'Culture', 'Photography'], price: 50 },
+    { name: 'Amina Begum', experience: '3 years', rating: 4.5, languages: ['Bengali', 'English'], specialties: ['Nature', 'Wildlife', 'Trekking'], price: 40 },
+    { name: 'Mohammed Ali', experience: '7 years', rating: 4.9, languages: ['Bengali', 'English', 'Arabic', 'Urdu'], specialties: ['Religious Sites', 'Architecture', 'Local History'], price: 60 }
   ];
   
   guideList.innerHTML = guides.map(guide => `
@@ -1044,15 +1285,11 @@ function hireGuide(guideName, price) {
     status: 'Confirmed'
   };
   
-  // Save to localStorage
   let bookings = JSON.parse(localStorage.getItem('guideBookings') || '[]');
   bookings.push(booking);
   localStorage.setItem('guideBookings', JSON.stringify(bookings));
   
-  // Show confirmation
   alert(`Guide ${guideName} hired for ৳${price}/day!`);
-  
-  // Update history
   loadHistory();
 }
 
@@ -1061,11 +1298,9 @@ function loadHistory() {
   const historyList = document.getElementById('historyList');
   if (!historyList) return;
   
-  // Get all bookings from localStorage
   const hotelBookings = JSON.parse(localStorage.getItem('hotelBookings') || '[]');
   const guideBookings = JSON.parse(localStorage.getItem('guideBookings') || '[]');
   
-  // Combine and sort by date
   const allHistory = [
     ...hotelBookings.map(booking => ({...booking, type: 'Hotel'})),
     ...guideBookings.map(booking => ({...booking, type: 'Guide'}))
@@ -1092,28 +1327,24 @@ function loadHistory() {
 function viewBookingDetails(type, name) {
   alert(`Viewing details for ${type} booking: ${name}`);
 }
+
 // ===== LOGIN / AUTH =====
 function checkLogin() {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const loginStatus = document.getElementById('loginStatus');
   const loginBtn = document.getElementById('loginBtn');
-  const ratingForm = document.getElementById('ratingForm');
-  const loginToReviewBtn = document.getElementById('loginToReviewBtn');
   if (isLoggedIn) {
     const email = localStorage.getItem('userEmail') || 'User';
     if (loginStatus) loginStatus.textContent = email;
     if (loginBtn) loginBtn.textContent = 'Logout';
     if (loginBtn) loginBtn.onclick = logout;
-    if (ratingForm) ratingForm.style.display = 'block';
-    if (loginToReviewBtn) loginToReviewBtn.style.display = 'none';
   } else {
     if (loginStatus) loginStatus.textContent = '';
     if (loginBtn) loginBtn.textContent = 'Login';
     if (loginBtn) loginBtn.onclick = showLoginModal;
-    if (ratingForm) ratingForm.style.display = 'none';
-    if (loginToReviewBtn) loginToReviewBtn.style.display = 'block';
   }
   renderReviews();
+  updateCheckLogin();
 }
 
 function showLoginModal() {
@@ -1138,6 +1369,10 @@ function logout() {
   localStorage.removeItem('isLoggedIn');
   localStorage.removeItem('userEmail');
   checkLogin();
+}
+
+function logoutUser() {
+  logout();
 }
 
 // ===== STAR RATING =====
@@ -1195,30 +1430,16 @@ function submitReview() {
     return;
   }
   const text = document.getElementById('reviewText').value.trim();
-  if (!text) {
-    alert('Please write a review');
-    return;
-  }
-  if (selectedRating === 0) {
-    alert('Please select a rating');
-    return;
-  }
+  if (!text) { alert('Please write a review'); return; }
+  if (selectedRating === 0) { alert('Please select a rating'); return; }
   const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
-  reviews.push({
-    email: localStorage.getItem('userEmail') || 'User',
-    rating: selectedRating,
-    text: text,
-    date: new Date().toISOString()
-  });
+  reviews.push({ email: localStorage.getItem('userEmail') || 'User', rating: selectedRating, text: text, date: new Date().toISOString() });
   localStorage.setItem('reviews', JSON.stringify(reviews));
   document.getElementById('reviewText').value = '';
   selectedRating = 0;
   document.querySelectorAll('#starRating .star').forEach(s => s.textContent = '☆');
   renderReviews();
 }
-
-// Initialize auth check and star rating on page load
-
 
 // ===== HOMEPAGE REVIEW =====
 let homepageSelectedRating = 0;
@@ -1256,44 +1477,38 @@ function renderHomepageReviews() {
 
 function submitHomepageReview() {
   if (localStorage.getItem('isLoggedIn') !== 'true') {
-    showLoginModal();
+    window.location.href = 'login.html';
     return;
   }
   const text = document.getElementById('homepageReviewText').value.trim();
   if (!text) { alert('Please write a review'); return; }
   if (homepageSelectedRating === 0) { alert('Please select a rating'); return; }
   const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
-  reviews.push({
-    email: localStorage.getItem('userEmail') || 'User',
-    rating: homepageSelectedRating,
-    text: text,
-    date: new Date().toISOString()
-  });
+  reviews.push({ email: localStorage.getItem('userEmail') || 'User', rating: homepageSelectedRating, text: text, date: new Date().toISOString() });
   localStorage.setItem('reviews', JSON.stringify(reviews));
   document.getElementById('homepageReviewText').value = '';
   homepageSelectedRating = 0;
   document.querySelectorAll('#homepageStarRating .star').forEach(s => s.textContent = '☆');
   renderHomepageReviews();
-  renderReviews(); // update other review sections
+  renderReviews();
 }
 
-// Update checkLogin to handle homepage elements
 function updateCheckLogin() {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const ratingForm = document.getElementById('homepageRatingForm');
-  const loginBtn = document.getElementById('homepageLoginBtn');
+  const note = document.getElementById('homepageReviewNote');
   if (isLoggedIn) {
-    if (ratingForm) ratingForm.style.display = 'block';
-    if (loginBtn) loginBtn.style.display = 'none';
+    const email = localStorage.getItem('userEmail') || 'User';
+    if (note) note.textContent = `Signed in as ${email}. Submit to publish your review.`;
   } else {
-    if (ratingForm) ratingForm.style.display = 'none';
-    if (loginBtn) loginBtn.style.display = 'block';
+    if (note) note.textContent = 'You can draft your review here. Sign in to publish it.';
   }
   renderHomepageReviews();
 }
-  setupHomepageStarRating();
-  updateCheckLogin();
+
+// Initialize auth check and star rating on page load
 document.addEventListener('DOMContentLoaded', () => {
   checkLogin();
   setupStarRating();
+  setupHomepageStarRating();
+  updateCheckLogin();
 });

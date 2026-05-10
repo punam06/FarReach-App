@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Torisom</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="dashboard.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1><i class="fas fa-compass"></i> Torisom</h1>
+        <p>Welcome back! Sign in to continue</p>
+      </div>
+      <div id="auth-message" class="auth-message" style="display:none;"></div>
+      <form id="login-form" class="auth-form">
+        <div class="form-group">
+          <label for="email"><i class="fas fa-envelope"></i> Email</label>
+          <input type="email" id="email" name="email" placeholder="Enter your email" required>
+        </div>
+        <div class="form-group">
+          <label for="password"><i class="fas fa-lock"></i> Password</label>
+          <input type="password" id="password" name="password" placeholder="Enter your password" required>
+        </div>
+        <button type="submit" class="btn-primary"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+      </form>
+      <div id="otp-section" style="display:none;">
+        <div class="otp-card">
+          <h3><i class="fas fa-shield-alt"></i> Verify Your Email</h3>
+          <p>Enter the OTP sent to your email to continue login.</p>
+          <div class="form-group">
+            <label for="otp"><i class="fas fa-key"></i> Enter OTP</label>
+            <input type="text" id="otp" name="otp" placeholder="6-digit OTP" maxlength="6" required>
+          </div>
+          <button id="verify-otp-btn" class="btn-primary" type="button"><i class="fas fa-check-circle"></i> Verify & Login</button>
+          <button id="resend-otp-btn" class="btn-secondary" type="button"><i class="fas fa-redo"></i> Resend OTP</button>
+        </div>
+      </div>
+      <div class="auth-footer">
+        <p>Don't have an account? <a href="/register">Register here</a></p>
+        <p><a href="/">Back to Home</a></p>
+      </div>
+    </div>
+  </div>
+  <script>
+    const API = window.location.origin + '/api';
+    const form = document.getElementById('login-form');
+    const msg = document.getElementById('auth-message');
+    const otpSection = document.getElementById('otp-section');
+    let verificationToken = '';
+
+    function showMessage(text, type = 'error') {
+      msg.textContent = text;
+      msg.className = 'auth-message ' + type;
+      msg.style.display = 'block';
+    }
+
+    function storeAndRedirect(user, token) {
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      if (user.role === 'admin') {
+        window.location.href = '/admin-dashboard';
+      } else {
+        window.location.href = '/user-dashboard';
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.style.display = 'none';
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      try {
+        const res = await fetch(API + '/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          storeAndRedirect(data.user, data.token);
+        } else if (data.verification_required && data.verificationToken) {
+          verificationToken = data.verificationToken;
+          form.style.display = 'none';
+          otpSection.style.display = 'block';
+          showMessage('Email verification is required. Please enter the OTP sent to your inbox.', 'success');
+        } else {
+          showMessage(data.error || 'Login failed.');
+        }
+      } catch (err) {
+        showMessage('Connection error. Please try again.');
+      }
+    });
+
+    document.getElementById('verify-otp-btn').addEventListener('click', async () => {
+      const otp = document.getElementById('otp').value.trim();
+      if (!otp || otp.length < 6) {
+        showMessage('Please enter a valid 6-digit OTP.');
+        return;
+      }
+
+      try {
+        const res = await fetch(API + '/auth/verify-otp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + verificationToken
+          },
+          body: JSON.stringify({ otp })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          storeAndRedirect(data.user, data.token);
+        } else {
+          showMessage(data.error || 'OTP verification failed.');
+        }
+      } catch (err) {
+        showMessage('Verification failed. Please try again.');
+      }
+    });
+
+    document.getElementById('resend-otp-btn').addEventListener('click', async () => {
+      try {
+        const res = await fetch(API + '/auth/resend-otp', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + verificationToken
+          }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showMessage('A new OTP was sent. Check your email.', 'success');
+        } else {
+          showMessage(data.error || 'Could not resend OTP.');
+        }
+      } catch (err) {
+        showMessage('Could not resend OTP. Try again.');
+      }
+    });
+  </script>
+</body>
+</html>

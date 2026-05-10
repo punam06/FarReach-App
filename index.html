@@ -25,16 +25,34 @@
       <nav class="nav">
         <a href="#home">Home</a>
         <a href="#discover">Destinations</a>
+        <a href="#divisions">Division</a>
         <a href="#categoryBar">Categories</a>
         <a href="#faq">FAQ</a>
       </nav>
       <a class="nav-cta" href="#discover">Explore Now</a>
 
-	      <div class="auth-section" id="authSection">
-	        <span id="loginStatus" style="color:var(--muted); margin-right:8px;"></span>
-	        <button class="button secondary" id="loginBtn" onclick="showLoginModal()">Login</button>
-	      </div>
+      <div class="auth-section" id="authSection">
+        <span id="loginStatus" style="color:var(--muted); margin-right:8px;"></span>
+        <a id="dashboardLink" href="/user-dashboard" style="display:none; margin-right:8px; color:var(--accent); text-decoration:none; font-weight:600;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <button class="button secondary" id="loginBtn" onclick="showLoginModal()">Login</button>
+        <button class="button secondary" id="logoutBtn" style="display:none;" onclick="logoutUser()">Logout</button>
+      </div>
 	    </header>
+
+    <!-- 8-Division Grid -->
+    <section class="section" id="divisions">
+      <header class="section-heading">
+        <h2>Explore by Division</h2>
+        <p>Browse the 8 divisions of Bangladesh.</p>
+      </header>
+      <div class="search-panel division-search-panel">
+        <div class="search-row">
+          <input id="districtSearch" type="text" placeholder="Search divisions..." oninput="searchDivisions()">
+          <button type="button" onclick="searchDivisions()">Search</button>
+        </div>
+      </div>
+      <div class="division-grid" id="divisionGrid"></div>
+    </section>
 
     <div class="category-bar" id="categoryBar" aria-label="Destination categories"></div>
 
@@ -54,6 +72,28 @@
               <button type="button" onclick="render()">Search</button>
             </div>
             <p class="search-hint" id="stats">Loading places...</p>
+            <div class="filter-grid">
+              <select id="budgetFilter" onchange="render()">
+                <option value="All">All Budgets</option>
+                <option value="low">Low Budget</option>
+                <option value="high">High Budget</option>
+              </select>
+              <select id="roadFilter" onchange="render()">
+                <option value="All">All Road Types</option>
+                <option value="easy">Easy Going Roads</option>
+                <option value="moderate">Moderate Roads</option>
+                <option value="challenging">Challenging Roads</option>
+              </select>
+              <select id="opportunityFilter" onchange="render()">
+                <option value="All">All Opportunities</option>
+                <option value="leisure">Leisure</option>
+                <option value="culture">Culture</option>
+                <option value="adventure">Adventure</option>
+                <option value="eco">Eco Travel</option>
+                <option value="wildlife">Wildlife</option>
+                <option value="family">Family Trips</option>
+              </select>
+            </div>
           </div>
 
           <div class="hero-stats">
@@ -140,25 +180,26 @@
         </header>
         <div class="popular-grid" id="popularGrid"></div>
       </section>
-	      <section class="section" id="homepage-review">
-	        <header class="section-heading">
-	          <h2>Leave a Review</h2>
-	          <p>Share your travel experience. Login required to submit.</p>
-	        </header>
-	        <div id="homepageReviewContainer"></div>
-	        <div id="homepageRatingForm" style="display:none; margin-top:20px;">
-	          <div class="star-rating" id="homepageStarRating">
-	            <span class="star" data-value="1">☆</span>
-	            <span class="star" data-value="2">☆</span>
-	            <span class="star" data-value="3">☆</span>
-	            <span class="star" data-value="4">☆</span>
-	            <span class="star" data-value="5">☆</span>
-	          </div>
-	          <textarea id="homepageReviewText" placeholder="Your review..." rows="3" style="width:100%; margin:10px 0; padding:8px; border-radius:8px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); color:var(--text);"></textarea>
-	          <button class="button primary" onclick="submitHomepageReview()">Submit Review</button>
-	        </div>
-	        <button class="button secondary" id="homepageLoginBtn" onclick="showLoginModal()">Login to Review</button>
-	      </section>
+
+      <section class="section" id="homepage-review">
+        <header class="section-heading">
+          <h2>Leave a Review</h2>
+          <p>Share your travel experience. Submitting without login will redirect you to the login page.</p>
+        </header>
+        <div id="homepageReviewContainer"></div>
+        <div class="homepage-review-form">
+          <div class="star-rating" id="homepageStarRating" aria-label="5 star rating">
+            <span class="star" data-value="1">☆</span>
+            <span class="star" data-value="2">☆</span>
+            <span class="star" data-value="3">☆</span>
+            <span class="star" data-value="4">☆</span>
+            <span class="star" data-value="5">☆</span>
+          </div>
+          <textarea id="homepageReviewText" placeholder="Write your review..." rows="4"></textarea>
+          <div class="review-note" id="homepageReviewNote">You can draft your review here. Sign in to publish it.</div>
+          <button class="button primary review-submit" onclick="submitHomepageReview()">Submit Review</button>
+        </div>
+      </section>
 
       <section class="section result-section" id="route">
         <header class="section-heading">
@@ -189,9 +230,58 @@
               </div>
             </div>
 
+            <div class="budget-panel" id="budgetSection">
+              <div class="budget-panel-head">
+                <div>
+                  <h4>Budget Calculator</h4>
+                  <p>Estimate trips, hotel, and guide costs before you travel.</p>
+                </div>
+                <span class="budget-pill" id="budgetBadge">Budget ready</span>
+              </div>
+
+              <div class="budget-grid">
+                <label>
+                  Travelers
+                  <input type="number" id="budgetTravelers" min="1" value="2">
+                </label>
+                <label>
+                  Nights
+                  <input type="number" id="budgetNights" min="1" value="2">
+                </label>
+                <label>
+                  Guide Days
+                  <input type="number" id="budgetGuideDays" min="0" value="1">
+                </label>
+                <label>
+                  Transport
+                  <select id="budgetTransport">
+                    <option value="bus">Bus</option>
+                    <option value="train">Train</option>
+                    <option value="launch">Launch</option>
+                    <option value="air">Air</option>
+                  </select>
+                </label>
+                <label>
+                  Hotel Tier
+                  <select id="budgetHotelTier">
+                    <option value="budget">Budget</option>
+                    <option value="standard">Standard</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="budget-actions">
+                <button type="button" class="button primary" onclick="calculateBudget()">Calculate Budget</button>
+              </div>
+
+              <div class="budget-result" id="budgetResult">
+                Select a destination to see the estimate.
+              </div>
+            </div>
+
             <div class="result-history" id="resultHistory" style="display: none;"></div>
 
-            <!-- Tab Navigation -->
             <div class="tab-navigation">
               <button class="tab-button active" onclick="showTab('weather', this)">🌤️ Weather</button>
               <button class="tab-button" onclick="showTab('map', this)">🗺️ Map</button>
@@ -201,9 +291,7 @@
               <button class="tab-button" onclick="showTab('history', this)">📜 History</button>
             </div>
 
-            <!-- Tab Content -->
             <div class="tab-content">
-              <!-- Weather Tab -->
               <div id="weather-tab" class="tab-pane active">
                 <div class="weather-section">
                   <div class="weather-display">
@@ -228,7 +316,6 @@
                 </div>
               </div>
 
-              <!-- Map Tab -->
               <div id="map-tab" class="tab-pane">
                 <div class="map-section">
                   <h4>Location Map</h4>
@@ -242,7 +329,6 @@
                 </div>
               </div>
 
-              <!-- Route Tab -->
               <div id="route-tab" class="tab-pane">
                 <div class="route-section">
                   <h4>Transportation Options</h4>
@@ -250,7 +336,6 @@
                 </div>
               </div>
 
-              <!-- Hotel Tab -->
               <div id="hotel-tab" class="tab-pane">
                 <div class="hotel-section">
                   <h4>Hotel Booking Assistant</h4>
@@ -312,9 +397,6 @@
                 </div>
               </div>
 
-              </div>
-
-              <!-- Guide Tab -->
               <div id="guide-tab" class="tab-pane">
                 <div class="guide-section">
                   <h4>Available Local Guides</h4>
@@ -322,7 +404,6 @@
                 </div>
               </div>
 
-              <!-- History Tab -->
               <div id="history-tab" class="tab-pane">
                 <div class="history-section">
                   <h4>Your Travel History</h4>
@@ -395,26 +476,18 @@
         <a class="button primary" href="#home">Start Exploring</a>
       </section>
 
-	      <section class="contact-section" id="review">
-	        <div>
-	          <h2>Reviews & Ratings</h2>
-	          <p>Read what other travelers think and leave your own rating (5 stars).</p>
-	        </div>
-	        <div id="reviewsContainer"></div>
-	        <div id="ratingForm" style="display:none; margin-top:20px;">
-	          <h3>Leave a Review</h3>
-	          <div class="star-rating" id="starRating">
-	            <span class="star" data-value="1">☆</span>
-	            <span class="star" data-value="2">☆</span>
-	            <span class="star" data-value="3">☆</span>
-	            <span class="star" data-value="4">☆</span>
-	            <span class="star" data-value="5">☆</span>
-	          </div>
-	          <textarea id="reviewText" placeholder="Your review..." rows="3" style="width:100%; margin:10px 0; padding:8px; border-radius:8px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); color:var(--text);"></textarea>
-	          <button class="button primary" onclick="submitReview()">Submit Review</button>
-	        </div>
-	        <button class="button secondary" id="loginToReviewBtn" onclick="showLoginModal()">Login to Review</button>
-	      </section>
+      <footer class="site-footer">
+        <div class="footer-col">
+          <h4>About Us</h4>
+          <p>Bangladesh Tourism Explorer helps travelers discover the country's best destinations with weather, routes, guides, budget planning, and booking assistance.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Contact Us</h4>
+          <p>Email: <a href="mailto:info@bdtourism.com">info@bdtourism.com</a></p>
+          <p>Phone: +880 1234-567890</p>
+          <p>Address: Dhaka, Bangladesh</p>
+        </div>
+      </footer>
     </main>
   </div>
 
