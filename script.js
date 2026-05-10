@@ -30,7 +30,8 @@ const spotImages = {
 };
 
 // Use same-origin when served by backend; fallback to localhost:3000 for static servers.
-const API_BASE = (window.location.origin === 'null' || window.location.origin.startsWith('file') || (location.port && location.port !== '3000')) ? 'http://127.0.0.1:3000' : '';
+const API_BASE = (window.location.origin === 'null' || window.location.origin.startsWith('file') || window.location.port === '5500' || window.location.port === '5501') ? 'http://127.0.0.1:3000' : window.location.origin;
+const API = API_BASE + '/api';
 
 const divisionDistrictMap = {
   Dhaka: ['Dhaka', 'Narayanganj', 'Gazipur', 'Manikganj', 'Munshiganj', 'Narsingdi', 'Sonargaon'],
@@ -254,7 +255,7 @@ async function fetchWeatherFor(district) {
   sugEl.textContent = '';
 
   try {
-    const url = `${API_BASE}/api/weather?district=${encodeURIComponent(district)}`;
+    const url = `${API}/weather?district=${encodeURIComponent(district)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Weather lookup failed');
     const data = await res.json();
@@ -311,7 +312,7 @@ async function fetchForecastForDate(district, dateVal) {
   sugEl.textContent = '';
 
   try {
-    const url = `${API_BASE}/api/forecast?district=${encodeURIComponent(district)}&date=${encodeURIComponent(dateVal)}`;
+    const url = `${API}/forecast?district=${encodeURIComponent(district)}&date=${encodeURIComponent(dateVal)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Forecast lookup failed');
     const result = await res.json();
@@ -389,7 +390,7 @@ async function fetchCurrentWeatherForTab(district) {
   sugEl.textContent = '';
 
   try {
-    const url = `${API_BASE}/api/weather?district=${encodeURIComponent(district)}`;
+    const url = `${API}/weather?district=${encodeURIComponent(district)}`;
     console.log('Fetching tab weather from:', url);
     const res = await fetch(url);
     console.log('Tab weather response status:', res.status);
@@ -509,9 +510,10 @@ function displayPopularGrid(filteredSpots) {
     const profile = getSpotFilterProfile(spot);
     const card = document.createElement('article');
     card.className = 'spot-card';
+    const imgUrl = spot.image ? (spot.image.startsWith('http') ? spot.image : `spot-pictures/${spot.image}`) : '';
     card.innerHTML = `
-      <div class="spot-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; height: 200px; color: white; font-size: 48px;">
-        <img src="spot-pictures/${spotImages[spot.name]}" style="width:100%;height:200px;object-fit:cover;">
+      <div class="spot-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; height: 200px; color: white; font-size: 48px; position: relative; overflow: hidden;">
+        <img src="${imgUrl}" style="width:100%;height:200px;object-fit:cover;" onerror="this.src='https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80';">
       </div>
       <div class="spot-content">
         <h3>${spot.name}</h3>
@@ -584,7 +586,8 @@ function selectSpot(spot) {
     visual.style.justifyContent = 'center';
     visual.style.fontSize = '80px';
     visual.style.minHeight = '300px';
-    visual.innerHTML = '<img src="spot-pictures/' + spotImages[spot.name] + '" style="width:100%;height:100%;object-fit:cover;">';
+    const imgUrl = spot.image ? (spot.image.startsWith('http') ? spot.image : `spot-pictures/${spot.image}`) : '';
+    visual.innerHTML = `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80';">`;
   }
 
   updateBudgetSection(spot);
@@ -596,8 +599,7 @@ function selectSpot(spot) {
     fetchCurrentWeatherForTab(spot.district);
   }
 
-    loadMap(spot.district, spot.name);
-  }
+  loadMap(spot.district, spot.name);
   
   const reviewsTab = document.getElementById('reviews-tab');
   if (reviewsTab && reviewsTab.classList.contains('active')) {
@@ -671,7 +673,7 @@ async function calculateBudget() {
   };
 
   try {
-    const response = await fetch(`${API_BASE}/api/spots/${spot.id}/budget-estimate`, {
+    const response = await fetch(`${API}/spots/${spot.id}/budget-estimate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -737,9 +739,11 @@ async function initializePage() {
   updateCheckLogin();
 
   try {
-    const res = await fetch(`${API_BASE}/api/spots`);
+    console.log('Fetching spots from:', `${API}/spots`);
+    const res = await fetch(`${API}/spots`);
     if (res.ok) {
       const data = await res.json();
+      console.log('Spots data received:', data.spots?.length || 0);
       if (data.spots && data.spots.length > 0) {
         spots = data.spots.map(s => ({
           ...s,
@@ -747,11 +751,26 @@ async function initializePage() {
           division: s.division_name || 'Unknown',
         }));
         allSpots = [...spots];
-        displayPopularGrid(allSpots);
       }
+    } else {
+      console.error('Server returned error:', res.status);
     }
   } catch (e) {
     console.error('Failed to fetch spots from DB', e);
+  }
+
+  // Final UI fallback/render
+  if (allSpots.length > 0) {
+    displayPopularGrid(allSpots);
+  } else {
+    // If database is empty or fetch failed, use mock data as fallback so page isn't empty
+    const mockSpots = [
+      { id: 1, name: "Cox's Bazar Beach", district: "Cox's Bazar", division: 'Chattogram', category: 'Beach', image: 'Coxs bazar.jpg' },
+      { id: 2, name: 'Sundarbans', district: 'Khulna', division: 'Jessore', category: 'Wildlife', image: 'Sundarban_Tiger.jpg' }
+    ];
+    allSpots = [...mockSpots];
+    spots = [...mockSpots];
+    displayPopularGrid(allSpots);
   }
 
   // Check for spot ID in URL
@@ -915,7 +934,7 @@ let appConfigCache = null;
 async function fetchAppConfig() {
   if (appConfigCache) return appConfigCache;
   try {
-    const res = await fetch(`${API_BASE}/api/config`);
+    const res = await fetch(`${API}/config`);
     if (res.ok) {
       appConfigCache = await res.json();
       return appConfigCache;
@@ -1028,7 +1047,7 @@ function searchHotels() {
   if (resultsDiv) resultsDiv.style.display = 'block';
   if (listDiv) listDiv.innerHTML = '<p style="color:var(--muted);">Searching hotels...</p>';
 
-  fetch(`${API_BASE}/api/hotels/search`, {
+  fetch(`${API}/hotels/search`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ hotelType, city, people, features, checkin, checkout })
@@ -1142,7 +1161,7 @@ async function bookHotel(hotelName, totalPrice, checkin, checkout) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/user/bookings`, {
+    const res = await fetch(`${API}/user/bookings`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -1212,7 +1231,7 @@ async function hireGuide(guideName, price) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/user/bookings`, {
+    const res = await fetch(`${API}/user/bookings`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -1249,7 +1268,7 @@ async function loadHistory() {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/user/bookings`, {
+    const res = await fetch(`${API}/user/bookings`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await res.json();
@@ -1365,16 +1384,6 @@ function setupStarRating() {
   }
 }
 
-// ===== REVIEWS =====
-      renderHomepageReviews();
-    } else {
-      const data = await res.json();
-      alert(data.error || 'Failed to submit review');
-    }
-  } catch (err) {
-    alert('Network error');
-  }
-}
 
 // ===== HOMEPAGE REVIEW =====
 let homepageSelectedRating = 0;
@@ -1396,7 +1405,7 @@ async function renderHomepageReviews() {
   if (!container) return;
   
   try {
-    const res = await fetch(`${API_BASE}/api/reviews/public`);
+    const res = await fetch(`${API}/reviews/public`);
     if (res.ok) {
       const data = await res.json();
       const generalReviews = data.reviews.filter(r => r.spot_id === null);
@@ -1430,7 +1439,7 @@ async function submitHomepageReview() {
   if (homepageSelectedRating === 0) { alert('Please select a rating'); return; }
   
   try {
-    const res = await fetch(`${API_BASE}/api/user/reviews`, {
+    const res = await fetch(`${API}/user/reviews`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1498,7 +1507,7 @@ async function renderSpotReviews(spotId) {
 
   container.innerHTML = '<p>Loading reviews...</p>';
   try {
-    const res = await fetch(`${API_BASE}/api/spots/${spotId}`);
+    const res = await fetch(`${API}/spots/${spotId}`);
     if (res.ok) {
       const data = await res.json();
       if (data.reviews.length === 0) {
@@ -1529,7 +1538,7 @@ async function submitSpotReview() {
   if (spotSelectedRating === 0) { alert('Please select a rating'); return; }
 
   try {
-    const res = await fetch(`${API_BASE}/api/user/reviews`, {
+    const res = await fetch(`${API}/user/reviews`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1567,7 +1576,7 @@ async function saveSpot(spotId) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/user/saved-spots/${spotId}`, {
+    const res = await fetch(`${API}/user/saved-spots/${spotId}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -1589,7 +1598,7 @@ async function updateSaveButtonState(spotId) {
   if (!token) return;
 
   try {
-    const res = await fetch(`${API_BASE}/api/user/saved-spots`, {
+    const res = await fetch(`${API}/user/saved-spots`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) {
@@ -1611,7 +1620,7 @@ async function updateSaveButtonState(spotId) {
 async function removeSavedSpot(spotId) {
   const token = localStorage.getItem('token');
   try {
-    const res = await fetch(`${API_BASE}/api/user/saved-spots/${spotId}`, {
+    const res = await fetch(`${API}/user/saved-spots/${spotId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
