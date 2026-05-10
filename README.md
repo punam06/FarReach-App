@@ -1,4 +1,4 @@
-# Torisom - Bangladesh Tourism Explorer (FarReach-App)
+# FarReach - Bangladesh Tourism Explorer (FarReach-App)
 
 Welcome to **Torisom**, a comprehensive tourism exploration and planning web application specifically designed for discovering the beauty of Bangladesh. Torisom helps travelers find top destinations, estimate trip budgets, check local weather forecasts, hire guides, and navigate hotel bookings all in one unified platform.
 
