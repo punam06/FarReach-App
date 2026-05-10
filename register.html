@@ -55,7 +55,7 @@
     </div>
   </div>
   <script>
-    const API = window.location.origin + '/api';
+    const API = (window.location.origin === 'null' || window.location.origin.startsWith('file') || window.location.port === '5500' || window.location.port === '5501') ? 'http://127.0.0.1:3000/api' : window.location.origin + '/api';
     const form = document.getElementById('register-form');
     const msg = document.getElementById('auth-message');
     const otpSection = document.getElementById('otp-section');

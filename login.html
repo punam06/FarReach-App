@@ -47,7 +47,8 @@
     </div>
   </div>
   <script>
-    const API = window.location.origin + '/api';
+    const API = (window.location.origin === 'null' || window.location.origin.startsWith('file') || window.location.port === '5500' || window.location.port === '5501') ? 'http://127.0.0.1:3000/api' : window.location.origin + '/api';
+    console.log('Using API URL:', API);
     const form = document.getElementById('login-form');
     const msg = document.getElementById('auth-message');
     const otpSection = document.getElementById('otp-section');
@@ -77,6 +78,7 @@
       try {
         const res = await fetch(API + '/auth/login', {
           method: 'POST',
+          mode: 'cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
@@ -92,7 +94,8 @@
           showMessage(data.error || 'Login failed.');
         }
       } catch (err) {
-        showMessage('Connection error. Please try again.');
+        console.error('Login error details:', err);
+        showMessage('Connection error. Please try again. (Details in console)');
       }
     });
 

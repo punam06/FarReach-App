@@ -156,7 +156,8 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const API = window.location.origin + '/api';
+    const API = (window.location.origin === 'null' || window.location.origin.startsWith('file') || window.location.port === '5500' || window.location.port === '5501') ? 'http://127.0.0.1:3000/api' : window.location.origin + '/api';
+    console.log('Admin Dashboard API URL:', API);
     let currentUser = null, allDivisions = [], allDistricts = [], allSpots = [];
 
     function checkAuth() {
@@ -205,10 +206,10 @@
         var res = await fetch(API + '/admin/stats', { headers: getHeaders() });
         if (res.status === 403 || res.status === 401) { logout(); return; }
         var data = await res.json();
-        document.getElementById('stat-users').textContent = data.totalUsers || 0;
-        document.getElementById('stat-spots').textContent = data.totalSpots || 0;
-        document.getElementById('stat-reviews').textContent = data.totalReviews || 0;
-        document.getElementById('stat-pending').textContent = data.pendingApprovals || 0;
+        document.getElementById('stat-users').textContent = data.users || 0;
+        document.getElementById('stat-spots').textContent = data.spots || 0;
+        document.getElementById('stat-reviews').textContent = data.reviews || 0;
+        document.getElementById('stat-pending').textContent = data.pending || 0;
       } catch (e) { console.error(e); }
     }
 
@@ -279,6 +280,7 @@
     async function saveSpot() {
       var id = document.getElementById('spot-id').value;
       var name = document.getElementById('spot-name').value;
+      console.log('Attempting to save spot:', { id, name });
       if (!name) { showToast('Spot name is required', 'error'); return; }
 
       var formData = new FormData();
@@ -302,17 +304,19 @@
           showToast(id ? 'Spot updated!' : 'Spot created!', 'success'); 
           closeModal('spot-modal'); 
           loadSpots(); 
+          loadStats();
         } else { 
           showToast(data.error || 'Failed to save spot', 'error'); 
         }
       } catch (e) { 
-        showToast('Connection error', 'error'); 
+        console.error('Save Spot Fetch Error:', e);
+        showToast('Connection error: ' + e.message, 'error'); 
       }
     }
 
     async function deleteSpot(id) {
       if (!confirm('Delete this spot?')) return;
-      try { var res = await fetch(API + '/admin/spots/' + id, { method: 'DELETE', headers: getHeaders() }); if (res.ok) { showToast('Spot deleted', 'success'); loadSpots(); } else showToast('Failed', 'error'); } catch (e) { showToast('Error', 'error'); }
+      try { var res = await fetch(API + '/admin/spots/' + id, { method: 'DELETE', headers: getHeaders() }); if (res.ok) { showToast('Spot deleted', 'success'); loadSpots(); loadStats(); } else showToast('Failed', 'error'); } catch (e) { showToast('Error', 'error'); }
     }
 
     // DIVISIONS & DISTRICTS
@@ -438,6 +442,7 @@
 
     async function saveGuide() {
       var id = document.getElementById('guide-id').value;
+      console.log('Attempting to save guide:', id || 'New');
       var body = {
         name: document.getElementById('guide-name').value,
         experience: document.getElementById('guide-experience').value,
@@ -452,14 +457,17 @@
       try {
         var url = id ? API + '/admin/guides/' + id : API + '/admin/guides';
         var res = await fetch(url, { method: id ? 'PUT' : 'POST', headers: getJSONHeaders(), body: JSON.stringify(body) });
-        if (res.ok) { showToast('Guide saved!', 'success'); closeModal('guide-modal'); loadGuides(); }
+        if (res.ok) { showToast('Guide saved!', 'success'); closeModal('guide-modal'); loadGuides(); loadStats(); }
         else showToast('Failed', 'error');
-      } catch (e) { showToast('Error', 'error'); }
+      } catch (e) { 
+        console.error('Save Guide Fetch Error:', e);
+        showToast('Error: ' + e.message, 'error'); 
+      }
     }
 
     async function deleteGuide(id) {
       if (!confirm('Delete this guide?')) return;
-      try { var res = await fetch(API + '/admin/guides/' + id, { method: 'DELETE', headers: getHeaders() }); if (res.ok) { showToast('Deleted', 'success'); loadGuides(); } else showToast('Failed', 'error'); } catch (e) {}
+      try { var res = await fetch(API + '/admin/guides/' + id, { method: 'DELETE', headers: getHeaders() }); if (res.ok) { showToast('Deleted', 'success'); loadGuides(); loadStats(); } else showToast('Failed', 'error'); } catch (e) {}
     }
 
     // USERS

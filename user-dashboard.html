@@ -104,7 +104,7 @@
   </div>
   <div class="toast" id="toast"></div>
   <script>
-    const API = window.location.origin + '/api';
+    const API = (window.location.origin === 'null' || window.location.origin.startsWith('file') || window.location.port === '5500' || window.location.port === '5501') ? 'http://127.0.0.1:3000/api' : window.location.origin + '/api';
     let currentUser = null, editRating = 0;
     function checkAuth() {
       const token = localStorage.getItem('token'), user = localStorage.getItem('user');

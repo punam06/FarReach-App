@@ -30,7 +30,7 @@ const spotImages = {
 };
 
 // Use same-origin when served by backend; fallback to localhost:3000 for static servers.
-const API_BASE = (location.port && location.port !== '3000') ? 'http://localhost:3000' : '';
+const API_BASE = (window.location.origin === 'null' || window.location.origin.startsWith('file') || (location.port && location.port !== '3000')) ? 'http://127.0.0.1:3000' : '';
 
 const divisionDistrictMap = {
   Dhaka: ['Dhaka', 'Narayanganj', 'Gazipur', 'Manikganj', 'Munshiganj', 'Narsingdi', 'Sonargaon'],
