@@ -18,35 +18,38 @@ router.use(authenticateToken, requireAdmin);
 
 router.get('/stats', async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT COUNT(*) as count FROM users');
-    const [spots] = await pool.query('SELECT COUNT(*) as count FROM spots');
-    const [reviews] = await pool.query('SELECT COUNT(*) as count FROM reviews');
-    const [guides] = await pool.query('SELECT COUNT(*) as count FROM guides');
-    const [pending] = await pool.query('SELECT COUNT(*) as count FROM users WHERE is_verified = 0');
-    res.json({ totalUsers: users[0].count, totalSpots: spots[0].count, totalReviews: reviews[0].count, totalGuides: guides[0].count, pendingApprovals: pending[0].count });
+    const [[{ spots }]] = await pool.query('SELECT COUNT(*) as spots FROM spots');
+    const [[{ users }]] = await pool.query('SELECT COUNT(*) as users FROM users WHERE role = "user"');
+    const [[{ reviews }]] = await pool.query('SELECT COUNT(*) as reviews FROM reviews');
+    const [[{ pending }]] = await pool.query('SELECT COUNT(*) as pending FROM bookings WHERE status = "pending"');
+    res.json({ spots, users, reviews, pending });
   } catch (err) { res.status(500).json({ error: 'Failed to fetch stats.' }); }
 });
 
 router.get('/spots', async (req, res) => {
+  console.log('Fetching spots for admin');
   try {
     const [spots] = await pool.query(
-      `SELECT s.*, d.name as district_name, dv.name as division_name
-       FROM spots s LEFT JOIN districts d ON s.district_id = d.id
-       LEFT JOIN divisions dv ON s.division_id = dv.id ORDER BY s.created_at DESC`
+      `SELECT s.*, d.name as district_name, dv.name as division_name 
+       FROM spots s 
+       LEFT JOIN districts d ON s.district_id = d.id 
+       LEFT JOIN divisions dv ON s.division_id = dv.id 
+       ORDER BY s.id DESC`
     );
-    res.json({ spots });
+    res.json({ spots: spots });
   } catch (err) { res.status(500).json({ error: 'Failed to fetch spots.' }); }
 });
 
 router.post('/spots', upload.single('image'), async (req, res) => {
   try {
     const { name, district_id, division_id, category, description, history, budget_category } = req.body;
+    console.log('Creating spot with body:', req.body);
     const image = req.file ? req.file.filename : '';
     const [result] = await pool.query(
       'INSERT INTO spots (name, district_id, division_id, category, description, history, image, budget_category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [name, district_id || null, division_id || null, category || 'General', description || '', history || '', image, budget_category || 'Low']
     );
-    res.json({ message: 'Spot created.', id: result.insertId });
+    res.json({ message: 'Spot added.', id: result.insertId });
   } catch (err) { 
     console.error('Error creating spot:', err);
     res.status(500).json({ error: 'Failed to create spot: ' + err.message }); 
@@ -152,6 +155,7 @@ router.get('/guides', async (req, res) => {
 router.post('/guides', async (req, res) => {
   try {
     const { name, experience, rating, languages, specialties, price, contact, spot_id } = req.body;
+    console.log('Creating guide with body:', req.body);
     if (!name) return res.status(400).json({ error: 'Name is required.' });
     const [result] = await pool.query(
       'INSERT INTO guides (name, experience, rating, languages, specialties, price, contact, spot_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -184,32 +188,18 @@ router.delete('/guides/:id', async (req, res) => {
 
 router.get('/users', async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT id, name, email, role, is_verified, phone, address, profile_pic, created_at FROM users ORDER BY created_at DESC');
+    const [users] = await pool.query('SELECT id, name, email, role, is_verified, created_at FROM users ORDER BY created_at DESC');
     res.json({ users });
   } catch (err) { res.status(500).json({ error: 'Failed to fetch users.' }); }
-});
-
-router.put('/users/:id/role', async (req, res) => {
-  try {
-    const { role } = req.body;
-    if (!['user', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role.' });
-    await pool.query('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
-    res.json({ message: 'User role updated.' });
-  } catch (err) { res.status(500).json({ error: 'Failed to update role.' }); }
-});
-
-router.delete('/users/:id', async (req, res) => {
-  try {
-    await pool.query('DELETE FROM users WHERE id = ?', [req.params.id]);
-    res.json({ message: 'User deleted.' });
-  } catch (err) { res.status(500).json({ error: 'Failed to delete user.' }); }
 });
 
 router.get('/reviews', async (req, res) => {
   try {
     const [reviews] = await pool.query(
-      `SELECT r.*, u.name as user_name, u.email as user_email, s.name as spot_name
-       FROM reviews r JOIN users u ON r.user_id = u.id LEFT JOIN spots s ON r.spot_id = s.id
+      `SELECT r.*, u.name as user_name, s.name as spot_name 
+       FROM reviews r 
+       JOIN users u ON r.user_id = u.id 
+       JOIN spots s ON r.spot_id = s.id 
        ORDER BY r.created_at DESC`
     );
     res.json({ reviews });
@@ -225,21 +215,25 @@ router.delete('/reviews/:id', async (req, res) => {
 
 router.get('/bookings', async (req, res) => {
   try {
-    const [bookings] = await pool.query(
-      `SELECT b.*, u.name as user_name, u.email as user_email 
-       FROM bookings b JOIN users u ON b.user_id = u.id 
+    const [rows] = await pool.query(
+      `SELECT b.*, u.name as user_name, u.email as user_email,
+       CASE 
+         WHEN b.type = 'hotel' THEN b.target_name
+         WHEN b.type = 'guide' THEN g.name
+         ELSE b.target_name
+       END as target_name
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       LEFT JOIN guides g ON b.type = 'guide' AND b.target_id = g.id
        ORDER BY b.created_at DESC`
     );
-    res.json({ bookings });
+    res.json({ bookings: rows });
   } catch (err) { res.status(500).json({ error: 'Failed to fetch bookings.' }); }
 });
 
 router.put('/bookings/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
-    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status.' });
-    }
     await pool.query('UPDATE bookings SET status = ? WHERE id = ?', [status, req.params.id]);
     res.json({ message: 'Booking status updated.' });
   } catch (err) { res.status(500).json({ error: 'Failed to update booking status.' }); }

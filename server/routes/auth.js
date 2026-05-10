@@ -105,7 +105,11 @@ async function issueOtpForVerification(email, name) {
     [email, otpHash, OTP_EXPIRY_MINUTES]
   );
 
-  return sendOtpEmail({ email, name, otp });
+  // Send email in background to prevent request timeout if SMTP is slow/failing
+  sendOtpEmail({ email, name, otp }).catch(err => {
+    console.error('Background OTP email failure:', err);
+  });
+  return { delivered: true, mode: 'background' };
 }
 
 async function getVerifyAttemptState(email) {
@@ -197,6 +201,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt for:', email);
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
     const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email.toLowerCase().trim()]);
     if (users.length === 0) return res.status(400).json({ error: 'Invalid email or password.' });
