@@ -19,6 +19,7 @@
         <a class="sidebar-link active" data-page="home"><i class="fas fa-home"></i> Home</a>
         <a class="sidebar-link" data-page="saved"><i class="fas fa-heart"></i> Saved Spots</a>
         <a class="sidebar-link" data-page="reviews"><i class="fas fa-star"></i> My Reviews</a>
+        <a class="sidebar-link" data-page="bookings"><i class="fas fa-calendar-check"></i> My Bookings</a>
         <div class="sidebar-section">Account</div>
         <a class="sidebar-link" data-page="profile"><i class="fas fa-user-cog"></i> Profile Settings</a>
         <a class="sidebar-link" data-page="guides"><i class="fas fa-map-marked-alt"></i> Guide Directory</a>
@@ -56,17 +57,26 @@
         <div class="page-header"><h1><i class="fas fa-star"></i> My Reviews</h1><p>All your reviews and ratings</p></div>
         <div class="card"><div class="card-body" id="reviews-list"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></div></div>
       </div>
+      <!-- MY BOOKINGS -->
+      <div class="page-section" id="page-bookings">
+        <div class="page-header"><h1><i class="fas fa-calendar-check"></i> My Bookings</h1><p>Your hotel and guide reservations</p></div>
+        <div class="card"><div class="card-body" id="bookings-list"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></div></div>
+      </div>
       <!-- PROFILE SETTINGS -->
       <div class="page-section" id="page-profile">
         <div class="page-header"><h1><i class="fas fa-user-cog"></i> Profile Settings</h1><p>Manage your account</p></div>
         <div class="card"><div class="card-body">
           <div class="profile-header">
-            <div class="profile-avatar" id="profile-avatar">U</div>
+            <img class="profile-avatar" id="profile-avatar" src="" alt="Avatar" style="object-fit:cover; display:none;">
+            <div class="profile-avatar" id="profile-avatar-fallback">U</div>
             <div class="profile-info"><h3 id="profile-name">User</h3><p id="profile-email">user@email.com</p><div class="verified-badge" id="profile-status"><i class="fas fa-check-circle"></i> Verified</div></div>
           </div>
-          <form id="profile-form" class="form-grid">
+          <form id="profile-form" class="form-grid" enctype="multipart/form-data">
             <div class="form-group"><label><i class="fas fa-user"></i> Full Name</label><input type="text" class="form-control" id="edit-name" required></div>
             <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" class="form-control" id="edit-email" disabled></div>
+            <div class="form-group"><label><i class="fas fa-phone"></i> Phone</label><input type="text" class="form-control" id="edit-phone" placeholder="Your phone number"></div>
+            <div class="form-group"><label><i class="fas fa-map-marker-alt"></i> Address</label><input type="text" class="form-control" id="edit-address" placeholder="Your address"></div>
+            <div class="form-group"><label><i class="fas fa-image"></i> Profile Picture</label><input type="file" class="form-control" id="edit-pic" accept="image/*"></div>
             <div class="form-group"><label><i class="fas fa-lock"></i> New Password</label><input type="password" class="form-control" id="edit-password" placeholder="Leave blank to keep current"></div>
             <div class="form-group"><label><i class="fas fa-lock"></i> Confirm Password</label><input type="password" class="form-control" id="edit-confirm-password" placeholder="Confirm new password"></div>
           </form>
@@ -115,7 +125,7 @@
         document.querySelector('.sidebar').classList.remove('open');
       });
     });
-    function loadPage(p) { if(p==='home')loadDashboard();else if(p==='saved')loadSavedSpots();else if(p==='reviews')loadReviews();else if(p==='profile')loadProfile();else if(p==='guides')loadGuides(); }
+    function loadPage(p) { if(p==='home')loadDashboard();else if(p==='saved')loadSavedSpots();else if(p==='reviews')loadReviews();else if(p==='bookings')loadBookings();else if(p==='profile')loadProfile();else if(p==='guides')loadGuides(); }
     function showToast(msg, type='info') { const t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+type+' show'; setTimeout(()=>t.classList.remove('show'),3000); }
     function starsHTML(r) { let s=''; for(let i=1;i<=5;i++) s+='<i class="fas fa-star" style="color:'+(i<=r?'#F5A623':'#E2E8F0')+'"></i>'; return s; }
     function spotImage(img) { if(!img)return''; return img.startsWith('http')?img:'/spot-pictures/'+encodeURIComponent(img); }
@@ -160,10 +170,89 @@
     async function saveReviewEdit(){const id=document.getElementById('edit-review-id').value,text=document.getElementById('edit-review-text').value;try{const res=await fetch(API+'/user/reviews/'+id,{method:'PUT',headers:getHeaders(),body:JSON.stringify({rating:editRating,text})});if(res.ok){showToast('Review updated!','success');closeModal('edit-review-modal');loadReviews();}else showToast('Failed','error');}catch(e){showToast('Error','error');}}
     async function deleteReview(id){if(!confirm('Delete this review?'))return;try{const res=await fetch(API+'/user/reviews/'+id,{method:'DELETE',headers:getHeaders()});if(res.ok){showToast('Review deleted','success');loadReviews();}else showToast('Failed','error');}catch(e){showToast('Error','error');}}
     function closeModal(id){document.getElementById(id).classList.remove('active');}
-    function loadProfile(){document.getElementById('profile-name').textContent=currentUser.name;document.getElementById('profile-email').textContent=currentUser.email;document.getElementById('profile-avatar').textContent=currentUser.name.charAt(0).toUpperCase();document.getElementById('edit-name').value=currentUser.name;document.getElementById('edit-email').value=currentUser.email;const st=document.getElementById('profile-status');if(currentUser.is_verified){st.innerHTML='<i class="fas fa-check-circle"></i> Verified';st.className='verified-badge';}else{st.innerHTML='<i class="fas fa-times-circle"></i> Not Verified';st.style.background='#FFF5F5';st.style.color='var(--danger)';}}
-    async function updateProfile(){const name=document.getElementById('edit-name').value,pw=document.getElementById('edit-password').value,cf=document.getElementById('edit-confirm-password').value;if(pw&&pw!==cf){showToast('Passwords do not match','error');return;}try{const body={name};if(pw)body.password=pw;const res=await fetch(API+'/auth/profile',{method:'PUT',headers:getHeaders(),body:JSON.stringify(body)});const data=await res.json();if(res.ok){currentUser.name=name;localStorage.setItem('user',JSON.stringify(currentUser));updateUserUI();showToast('Profile updated!','success');document.getElementById('edit-password').value='';document.getElementById('edit-confirm-password').value='';}else showToast(data.error||'Failed','error');}catch(e){showToast('Error','error');}}
+    function loadProfile() {
+      document.getElementById('profile-name').textContent=currentUser.name;
+      document.getElementById('profile-email').textContent=currentUser.email;
+      
+      const av = document.getElementById('profile-avatar');
+      const fb = document.getElementById('profile-avatar-fallback');
+      if (currentUser.profile_pic) {
+        av.src = spotImage(currentUser.profile_pic);
+        av.style.display = 'flex';
+        fb.style.display = 'none';
+      } else {
+        av.style.display = 'none';
+        fb.style.display = 'flex';
+        fb.textContent = currentUser.name.charAt(0).toUpperCase();
+      }
+      
+      document.getElementById('edit-name').value=currentUser.name;
+      document.getElementById('edit-email').value=currentUser.email;
+      document.getElementById('edit-phone').value=currentUser.phone || '';
+      document.getElementById('edit-address').value=currentUser.address || '';
+      
+      const st=document.getElementById('profile-status');
+      if(currentUser.is_verified){st.innerHTML='<i class="fas fa-check-circle"></i> Verified';st.className='verified-badge';}
+      else{st.innerHTML='<i class="fas fa-times-circle"></i> Not Verified';st.style.background='#FFF5F5';st.style.color='var(--danger)';}
+    }
+
+    async function updateProfile() {
+      const name = document.getElementById('edit-name').value;
+      const phone = document.getElementById('edit-phone').value;
+      const address = document.getElementById('edit-address').value;
+      const pw = document.getElementById('edit-password').value;
+      const cf = document.getElementById('edit-confirm-password').value;
+      const pic = document.getElementById('edit-pic').files[0];
+
+      if(pw && pw!==cf){ showToast('Passwords do not match','error'); return; }
+      
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('phone', phone);
+      formData.append('address', address);
+      if(pw) formData.append('password', pw);
+      if(pic) formData.append('profile_pic', pic);
+
+      try {
+        const res = await fetch(API+'/auth/profile', {
+          method: 'PUT',
+          headers: getHeaders(), // Don't set Content-Type for FormData, browser does it with boundary
+          body: formData
+        });
+        const data = await res.json();
+        if(res.ok) {
+          currentUser = data.user;
+          localStorage.setItem('user', JSON.stringify(currentUser));
+          updateUserUI();
+          loadProfile();
+          showToast('Profile updated!', 'success');
+          document.getElementById('edit-password').value='';
+          document.getElementById('edit-confirm-password').value='';
+          document.getElementById('edit-pic').value='';
+        } else {
+          showToast(data.error || 'Failed', 'error');
+        }
+      } catch(e) {
+        showToast('Error', 'error');
+      }
+    }
     async function loadGuides(){try{const res=await fetch(API+'/user/guides',{headers:getHeaders()});const data=await res.json();const g=document.getElementById('guides-grid');if(data.guides.length===0)g.innerHTML='<div class="empty-state"><i class="fas fa-map-marked-alt"></i><h4>No guides found</h4><p>Save spots to see their guides!</p></div>';else g.innerHTML=data.guides.map(g=>'<div class="guide-card"><h4><i class="fas fa-user-tie" style="color:var(--primary);margin-right:6px;"></i>'+g.name+'</h4><div class="guide-spot"><i class="fas fa-map-marker-alt"></i> '+(g.spot_name||'N/A')+'</div><div class="guide-card-details"><div><i class="fas fa-clock"></i> '+(g.experience||'N/A')+'</div><div><i class="fas fa-star"></i> '+(g.rating||'N/A')+'</div><div><i class="fas fa-language"></i> '+(g.languages||'N/A')+'</div><div><i class="fas fa-tag"></i> ৳'+(g.price||'0')+'</div><div><i class="fas fa-phone"></i> '+(g.contact||'N/A')+'</div><div><i class="fas fa-award"></i> '+(g.specialties||'N/A')+'</div></div></div>').join('');}catch(e){showToast('Failed to load','error');}}
-    function updateUserUI(){if(!currentUser)return;document.getElementById('user-name').textContent=currentUser.name;document.getElementById('user-email').textContent=currentUser.email;document.getElementById('user-avatar').textContent=currentUser.name.charAt(0).toUpperCase();document.getElementById('greeting-name').textContent=currentUser.name.split(' ')[0];}
+    async function loadBookings(){try{const res=await fetch(API+'/user/bookings',{headers:getHeaders()});const data=await res.json();const bl=document.getElementById('bookings-list');if(data.bookings.length===0)bl.innerHTML='<div class="empty-state"><i class="fas fa-calendar-check"></i><h4>No bookings yet</h4><p>Book a hotel or guide from the main site.</p></div>';else bl.innerHTML=data.bookings.map(b=>'<div style="border-bottom:1px solid #E2E8F0;padding:12px 0;"><div style="display:flex;justify-content:space-between;"><strong><i class="fas fa-'+(b.type==='hotel'?'hotel':'user-tie')+'" style="color:var(--primary);margin-right:6px;"></i>'+b.target_name+' ('+b.type.toUpperCase()+')</strong><span style="color:'+(b.status==='confirmed'?'var(--success)':'var(--danger)')+';font-weight:600;font-size:14px;">'+b.status.toUpperCase()+'</span></div><div style="font-size:14px;color:#718096;margin-top:4px;">Date: '+(b.booking_date?new Date(b.booking_date).toLocaleDateString():new Date(b.created_at).toLocaleDateString())+' | Price: ৳'+b.price+'</div></div>').join('');}catch(e){showToast('Failed to load','error');}}
+    function updateUserUI(){
+      if(!currentUser)return;
+      document.getElementById('user-name').textContent=currentUser.name;
+      document.getElementById('user-email').textContent=currentUser.email;
+      
+      const av = document.getElementById('user-avatar');
+      if (currentUser.profile_pic) {
+        av.innerHTML = `<img src="${spotImage(currentUser.profile_pic)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+        av.style.background = 'transparent';
+      } else {
+        av.innerHTML = currentUser.name.charAt(0).toUpperCase();
+      }
+      
+      document.getElementById('greeting-name').textContent=currentUser.name.split(' ')[0];
+    }
     if(checkAuth()){updateUserUI();loadDashboard();}
   </script>
 </body>

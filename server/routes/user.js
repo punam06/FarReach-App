@@ -84,6 +84,31 @@ router.get('/guides', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Failed to fetch guides.' }); }
 });
 
+router.get('/bookings', authenticateToken, async (req, res) => {
+  try {
+    const [bookings] = await pool.query(
+      `SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC`, [req.user.id]
+    );
+    res.json({ bookings });
+  } catch (err) { res.status(500).json({ error: 'Failed to fetch bookings.' }); }
+});
+
+router.post('/bookings', authenticateToken, async (req, res) => {
+  try {
+    const { type, target_name, price, booking_date } = req.body;
+    if (!type || !target_name) return res.status(400).json({ error: 'Type and target name are required.' });
+    
+    await pool.query(
+      'INSERT INTO bookings (user_id, type, target_name, price, booking_date) VALUES (?, ?, ?, ?, ?)',
+      [req.user.id, type, target_name, price || 0, booking_date || null]
+    );
+    res.json({ message: 'Booking confirmed successfully!' });
+  } catch (err) { 
+    console.error('Booking error:', err);
+    res.status(500).json({ error: 'Failed to process booking.' }); 
+  }
+});
+
 router.get('/dashboard', authenticateToken, async (req, res) => {
   try {
     const [savedCount] = await pool.query('SELECT COUNT(*) as count FROM saved_spots WHERE user_id = ?', [req.user.id]);

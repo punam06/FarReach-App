@@ -214,4 +214,26 @@ router.delete('/reviews/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Failed to delete review.' }); }
 });
 
+router.get('/bookings', async (req, res) => {
+  try {
+    const [bookings] = await pool.query(
+      `SELECT b.*, u.name as user_name, u.email as user_email 
+       FROM bookings b JOIN users u ON b.user_id = u.id 
+       ORDER BY b.created_at DESC`
+    );
+    res.json({ bookings });
+  } catch (err) { res.status(500).json({ error: 'Failed to fetch bookings.' }); }
+});
+
+router.put('/bookings/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status.' });
+    }
+    await pool.query('UPDATE bookings SET status = ? WHERE id = ?', [status, req.params.id]);
+    res.json({ message: 'Booking status updated.' });
+  } catch (err) { res.status(500).json({ error: 'Failed to update booking status.' }); }
+});
+
 module.exports = router;

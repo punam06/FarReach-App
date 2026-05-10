@@ -1241,27 +1241,45 @@ function resetHotelForm() {
   if (calculator) calculator.style.display = 'none';
 }
 
-function bookHotel(hotelName, totalPrice, checkin, checkout) {
-  if (localStorage.getItem('isLoggedIn') !== 'true') {
+async function bookHotel(hotelName, totalPrice, checkin, checkout) {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  
+  if (!token || !user) {
     showLoginModal();
     return;
   }
 
-  const booking = {
-    hotel: hotelName,
-    price: totalPrice,
-    checkin: checkin,
-    checkout: checkout,
-    date: new Date().toISOString().split('T')[0],
-    status: 'Confirmed'
-  };
+  if (!user.phone || !user.address) {
+    alert("Please complete your profile (add Phone and Address) before making a booking.");
+    window.location.href = '/user-dashboard#profile';
+    return;
+  }
 
-  let bookings = JSON.parse(localStorage.getItem('hotelBookings') || '[]');
-  bookings.push(booking);
-  localStorage.setItem('hotelBookings', JSON.stringify(bookings));
-
-  alert(`Booking confirmed for ${hotelName}!\nTotal: ৳${totalPrice}\nCheck-in: ${checkin}\nCheck-out: ${checkout}`);
-  loadHistory();
+  try {
+    const res = await fetch(`${API_BASE}/api/user/bookings`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        type: 'hotel',
+        target_name: hotelName,
+        price: totalPrice,
+        booking_date: checkin
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`Booking confirmed for ${hotelName}!\nTotal: ৳${totalPrice}\nCheck-in: ${checkin}\nCheck-out: ${checkout}`);
+      loadHistory();
+    } else {
+      alert(data.error || 'Booking failed');
+    }
+  } catch (err) {
+    alert('Connection error');
+  }
 }
 
 // ==== GUIDE FUNCTIONS ====
@@ -1293,51 +1311,84 @@ function loadGuides(district) {
   `).join('');
 }
 
-function hireGuide(guideName, price) {
-  const booking = {
-    guide: guideName,
-    price: price,
-    date: new Date().toISOString().split('T')[0],
-    status: 'Confirmed'
-  };
+async function hireGuide(guideName, price) {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
   
-  let bookings = JSON.parse(localStorage.getItem('guideBookings') || '[]');
-  bookings.push(booking);
-  localStorage.setItem('guideBookings', JSON.stringify(bookings));
-  
-  alert(`Guide ${guideName} hired for ৳${price}/day!`);
-  loadHistory();
+  if (!token || !user) {
+    showLoginModal();
+    return;
+  }
+
+  if (!user.phone || !user.address) {
+    alert("Please complete your profile (add Phone and Address) before hiring a guide.");
+    window.location.href = '/user-dashboard#profile';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/user/bookings`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        type: 'guide',
+        target_name: guideName,
+        price: price,
+        booking_date: new Date().toISOString().split('T')[0]
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`Guide ${guideName} hired for ৳${price}/day!`);
+      loadHistory();
+    } else {
+      alert(data.error || 'Booking failed');
+    }
+  } catch (err) {
+    alert('Connection error');
+  }
 }
 
 // ==== HISTORY FUNCTIONS ====
-function loadHistory() {
+async function loadHistory() {
   const historyList = document.getElementById('historyList');
   if (!historyList) return;
   
-  const hotelBookings = JSON.parse(localStorage.getItem('hotelBookings') || '[]');
-  const guideBookings = JSON.parse(localStorage.getItem('guideBookings') || '[]');
-  
-  const allHistory = [
-    ...hotelBookings.map(booking => ({...booking, type: 'Hotel'})),
-    ...guideBookings.map(booking => ({...booking, type: 'Guide'}))
-  ].sort((a, b) => new Date(b.date) - new Date(a.date));
-  
-  if (allHistory.length === 0) {
-    historyList.innerHTML = '<p style="text-align: center; color: var(--muted); padding: 20px;">No booking history found.</p>';
+  const token = localStorage.getItem('token');
+  if (!token) {
+    historyList.innerHTML = '<p style="text-align: center; color: var(--muted); padding: 20px;">Please login to see your booking history.</p>';
     return;
   }
-  
-  historyList.innerHTML = allHistory.map(item => `
-    <div class="history-item">
-      <h5>${item.type} Booking - ${item.hotel || item.guide}</h5>
-      <p class="date">Date: ${item.date}</p>
-      <p class="details">
-        <strong>Price:</strong> ৳${item.price} | 
-        <strong>Status:</strong> ${item.status}
-      </p>
-      <button class="action" onclick="viewBookingDetails('${item.type}', '${item.hotel || item.guide}')">View Details</button>
-    </div>
-  `).join('');
+
+  try {
+    const res = await fetch(`${API_BASE}/api/user/bookings`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      if (data.bookings.length === 0) {
+        historyList.innerHTML = '<p style="text-align: center; color: var(--muted); padding: 20px;">No booking history found.</p>';
+        return;
+      }
+      
+      historyList.innerHTML = data.bookings.map(item => `
+        <div class="history-item">
+          <h5>${item.type.charAt(0).toUpperCase() + item.type.slice(1)} Booking - ${item.target_name}</h5>
+          <p class="date">Date: ${item.booking_date ? new Date(item.booking_date).toLocaleDateString() : new Date(item.created_at).toLocaleDateString()}</p>
+          <p class="details">
+            <strong>Price:</strong> ৳${item.price} | 
+            <strong>Status:</strong> ${item.status.toUpperCase()}
+          </p>
+          <button class="action" onclick="viewBookingDetails('${item.type}', '${item.target_name}')">View Details</button>
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    historyList.innerHTML = '<p style="text-align: center; color: var(--danger); padding: 20px;">Failed to load history.</p>';
+  }
 }
 
 function viewBookingDetails(type, name) {
@@ -1346,24 +1397,49 @@ function viewBookingDetails(type, name) {
 
 // ===== LOGIN / AUTH =====
 function checkLogin() {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const token = localStorage.getItem('token');
+  const userStr = localStorage.getItem('user');
+
   const loginStatus = document.getElementById('loginStatus');
   const loginBtn = document.getElementById('loginBtn');
   const signupBtn = document.getElementById('signupBtn');
-  if (isLoggedIn) {
-    const email = localStorage.getItem('userEmail') || 'User';
-    if (loginStatus) loginStatus.textContent = email;
-    if (loginBtn) loginBtn.textContent = 'Logout';
-    if (loginBtn) loginBtn.onclick = logout;
+  const logoutBtn = document.getElementById('logoutBtn');
+  const dashboardLink = document.getElementById('dashboardLink');
+
+  if (token && userStr) {
+    let user;
+    try { user = JSON.parse(userStr); } catch(e) { user = {}; }
+
+    if (loginStatus) loginStatus.textContent = 'Hi, ' + (user.name || user.email || 'User');
+    if (loginBtn) loginBtn.style.display = 'none';
     if (signupBtn) signupBtn.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'inline-block';
+
+    if (dashboardLink) {
+      dashboardLink.style.display = 'inline-block';
+      if (user.role === 'admin') {
+        dashboardLink.href = '/admin-dashboard';
+        dashboardLink.innerHTML = '<i class="fas fa-tachometer-alt"></i> Admin Panel';
+      } else {
+        dashboardLink.href = '/user-dashboard';
+        dashboardLink.innerHTML = '<i class="fas fa-tachometer-alt"></i> Dashboard';
+      }
+    }
   } else {
     if (loginStatus) loginStatus.textContent = '';
-    if (loginBtn) loginBtn.textContent = 'Login';
-    if (loginBtn) loginBtn.onclick = showLoginModal;
+    if (loginBtn) loginBtn.style.display = 'inline-block';
     if (signupBtn) signupBtn.style.display = 'inline-block';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    if (dashboardLink) dashboardLink.style.display = 'none';
   }
   renderReviews();
-  updateCheckLogin();
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('isLoggedIn');
+  checkLogin();
 }
 
 function showLoginModal() {
@@ -1492,22 +1568,39 @@ async function resendOtp() {
   }
 }
 
-function login() {
-  const email = document.getElementById('loginEmail').value;
+async function login() {
+  const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
   if (!email || !password) {
     alert('Please enter email and password');
     return;
   }
-  localStorage.setItem('isLoggedIn', 'true');
-  localStorage.setItem('userEmail', email);
-  closeLoginModal();
-  checkLogin();
-}
-function logout() {
-  localStorage.removeItem('isLoggedIn');
-  localStorage.removeItem('userEmail');
-  checkLogin();
+  
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      closeLoginModal();
+      checkLogin();
+    } else if (data.verification_required) {
+      alert('Your email is not verified yet. An OTP has been sent.');
+      tempSignupEmail = email;
+      tempVerificationToken = data.verificationToken;
+      closeLoginModal();
+      showOtpModal();
+    } else {
+      alert(data.error || 'Login failed');
+    }
+  } catch (err) {
+    alert('Connection error. Is the server running?');
+  }
 }
 
 function logoutUser() {

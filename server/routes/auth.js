@@ -1,6 +1,8 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
 const pool = require('../config/database');
 const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
 const { ADMIN_EMAILS } = require('../config/schema');
@@ -12,6 +14,15 @@ const OTP_MAX_SENDS_PER_HOUR = parseInt(process.env.OTP_MAX_SENDS_PER_HOUR || '5
 const OTP_MAX_VERIFY_ATTEMPTS = parseInt(process.env.OTP_MAX_VERIFY_ATTEMPTS || '5', 10);
 const OTP_VERIFY_WINDOW_MINUTES = parseInt(process.env.OTP_VERIFY_WINDOW_MINUTES || '15', 10);
 const OTP_VERIFY_BLOCK_MINUTES = parseInt(process.env.OTP_VERIFY_BLOCK_MINUTES || '15', 10);
+
+const storage = multer.diskStorage({
+  destination: path.join(__dirname, '../../spot-pictures'),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'profile-' + unique + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 function issueAuthToken(user) {
   return jwt.sign(
@@ -219,7 +230,7 @@ router.post('/login', async (req, res) => {
     }
 
     const token = issueAuthToken(user);
-    res.json({ message: 'Login successful.', token, user: { id: user.id, name: user.name, email: user.email, role: user.role, is_verified: user.is_verified, profile_pic: user.profile_pic } });
+    res.json({ message: 'Login successful.', token, user: { id: user.id, name: user.name, email: user.email, role: user.role, is_verified: user.is_verified, profile_pic: user.profile_pic, phone: user.phone, address: user.address } });
   } catch (err) {
     if (err.status) {
       return res.status(err.status).json({ error: err.message });
@@ -262,7 +273,7 @@ router.post('/verify-otp', authenticateVerificationToken, async (req, res) => {
     await pool.query('UPDATE users SET is_verified = 1 WHERE id = ?', [req.verification.id]);
     await clearVerifyAttemptState(req.verification.email);
 
-    const [users] = await pool.query('SELECT id, name, email, role, is_verified, profile_pic FROM users WHERE id = ?', [req.verification.id]);
+    const [users] = await pool.query('SELECT id, name, email, role, is_verified, profile_pic, phone, address FROM users WHERE id = ?', [req.verification.id]);
     if (users.length === 0) return res.status(404).json({ error: 'User not found.' });
 
     const token = issueAuthToken(users[0]);
@@ -291,7 +302,7 @@ router.post('/resend-otp', authenticateVerificationToken, async (req, res) => {
 
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT id, name, email, role, is_verified, profile_pic, created_at FROM users WHERE id = ?', [req.user.id]);
+    const [users] = await pool.query('SELECT id, name, email, role, is_verified, profile_pic, phone, address, created_at FROM users WHERE id = ?', [req.user.id]);
     if (users.length === 0) return res.status(404).json({ error: 'User not found.' });
     res.json({ user: users[0] });
   } catch (err) {
@@ -299,20 +310,26 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
-router.put('/profile', authenticateToken, async (req, res) => {
+router.put('/profile', authenticateToken, upload.single('profile_pic'), async (req, res) => {
   try {
-    const { name, password, profile_pic } = req.body;
+    const { name, password, phone, address } = req.body;
+    const profile_pic = req.file ? req.file.filename : undefined;
+    
     const updates = [];
     const values = [];
     if (name) { updates.push('name = ?'); values.push(name); }
+    if (phone !== undefined) { updates.push('phone = ?'); values.push(phone); }
+    if (address !== undefined) { updates.push('address = ?'); values.push(address); }
     if (profile_pic) { updates.push('profile_pic = ?'); values.push(profile_pic); }
     if (password) { const hash = await bcrypt.hash(password, 10); updates.push('password_hash = ?'); values.push(hash); }
+    
     if (updates.length === 0) return res.status(400).json({ error: 'No fields to update.' });
     values.push(req.user.id);
     await pool.query('UPDATE users SET ' + updates.join(', ') + ' WHERE id = ?', values);
-    const [users] = await pool.query('SELECT id, name, email, role, is_verified, profile_pic FROM users WHERE id = ?', [req.user.id]);
+    const [users] = await pool.query('SELECT id, name, email, role, is_verified, profile_pic, phone, address FROM users WHERE id = ?', [req.user.id]);
     res.json({ message: 'Profile updated.', user: users[0] });
   } catch (err) {
+    console.error('Profile update failed:', err);
     res.status(500).json({ error: 'Profile update failed.' });
   }
 });

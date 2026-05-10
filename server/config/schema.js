@@ -18,11 +18,20 @@ async function initializeDatabase() {
       email VARCHAR(255) NOT NULL UNIQUE,
       password_hash VARCHAR(255) NOT NULL,
       profile_pic VARCHAR(500) DEFAULT '',
+      phone VARCHAR(20) DEFAULT '',
+      address TEXT,
       is_verified TINYINT(1) DEFAULT 0,
       role ENUM('user','admin') DEFAULT 'user',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`);
+
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN phone VARCHAR(20) DEFAULT ""');
+      await connection.query('ALTER TABLE users ADD COLUMN address TEXT');
+    } catch (e) {
+      // Columns might already exist, ignore errors safely
+    }
 
     await connection.query(`CREATE TABLE IF NOT EXISTS divisions (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -75,6 +84,18 @@ async function initializeDatabase() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (spot_id) REFERENCES spots(id) ON DELETE CASCADE,
       UNIQUE KEY unique_user_spot (user_id, spot_id)
+    )`);
+
+    await connection.query(`CREATE TABLE IF NOT EXISTS bookings (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      type ENUM('hotel', 'guide', 'package') NOT NULL,
+      target_name VARCHAR(255) NOT NULL,
+      price INT DEFAULT 0,
+      booking_date DATE,
+      status ENUM('pending', 'confirmed', 'cancelled') DEFAULT 'confirmed',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )`);
 
     await connection.query(`CREATE TABLE IF NOT EXISTS guides (

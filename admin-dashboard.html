@@ -24,6 +24,7 @@
         <div class="sidebar-section">Moderation</div>
         <a class="sidebar-link" data-page="users"><i class="fas fa-users"></i> Users</a>
         <a class="sidebar-link" data-page="reviews"><i class="fas fa-comment-dots"></i> Reviews</a>
+        <a class="sidebar-link" data-page="bookings"><i class="fas fa-calendar-check"></i> Bookings</a>
         <div class="sidebar-section">Browse</div>
         <a class="sidebar-link" href="/"><i class="fas fa-globe"></i> View Site</a>
       </nav>
@@ -81,6 +82,11 @@
       <div class="page-section" id="page-reviews">
         <div class="page-header"><h1><i class="fas fa-comment-dots"></i> Review Moderation</h1><p>Moderate user reviews</p></div>
         <div class="card"><div class="card-body" style="overflow-x:auto;"><table class="data-table"><thead><tr><th>User</th><th>Spot</th><th>Rating</th><th>Review</th><th>Date</th><th>Actions</th></tr></thead><tbody id="reviews-table"></tbody></table></div></div>
+      </div>
+      <!-- BOOKINGS -->
+      <div class="page-section" id="page-bookings">
+        <div class="page-header"><h1><i class="fas fa-calendar-check"></i> Manage Bookings</h1><p>View and manage hotel, guide, and package reservations</p></div>
+        <div class="card"><div class="card-body" style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Traveler</th><th>Type</th><th>Target</th><th>Date</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead><tbody id="bookings-table"></tbody></table></div></div>
       </div>
     </main>
   </div>
@@ -186,6 +192,7 @@
       else if (p === 'guides') loadGuides();
       else if (p === 'users') loadUsers();
       else if (p === 'reviews') loadAdminReviews();
+      else if (p === 'bookings') loadAdminBookings();
     }
 
     // STATS
@@ -476,6 +483,30 @@
     async function deleteAdminReview(id) {
       if (!confirm('Delete this review?')) return;
       try { var res = await fetch(API + '/admin/reviews/' + id, { method: 'DELETE', headers: getHeaders() }); if (res.ok) { showToast('Review deleted', 'success'); loadAdminReviews(); } else showToast('Failed', 'error'); } catch (e) {}
+    }
+
+    // BOOKINGS
+    async function loadAdminBookings() {
+      try {
+        var res = await fetch(API + '/admin/bookings', { headers: getHeaders() });
+        var data = await res.json();
+        var tb = document.getElementById('bookings-table');
+        if (data.bookings.length === 0) { tb.innerHTML = '<tr><td colspan="7" class="empty-state">No bookings found</td></tr>'; return; }
+        tb.innerHTML = data.bookings.map(function(b) {
+          var typeIcon = b.type === 'hotel' ? 'hotel' : 'user-tie';
+          var statusBadge = b.status === 'confirmed' ? 'badge-success' : (b.status === 'cancelled' ? 'badge-danger' : 'badge-warning');
+          return '<tr><td>' + b.user_name + '<br><small style="color:var(--muted);">' + b.user_email + '</small></td><td><span style="text-transform:capitalize;">' + b.type + '</span></td><td><i class="fas fa-' + typeIcon + '" style="color:var(--primary);"></i> ' + b.target_name + '</td><td>' + (b.booking_date ? new Date(b.booking_date).toLocaleDateString() : '-') + '</td><td>৳' + b.price + '</td><td><span class="badge ' + statusBadge + '" style="text-transform:capitalize;">' + b.status + '</span></td><td><select onchange="updateBookingStatus(' + b.id + ', this.value)" style="padding:4px;border-radius:4px;border:1px solid #ddd;"><option value="" disabled selected>Update Status</option><option value="confirmed">Confirm</option><option value="pending">Pending</option><option value="cancelled">Cancel</option></select></td></tr>';
+        }).join('');
+      } catch (e) { showToast('Failed to load bookings', 'error'); }
+    }
+
+    async function updateBookingStatus(id, newStatus) {
+      if (!confirm('Update booking status to ' + newStatus + '?')) return loadAdminBookings();
+      try {
+        var res = await fetch(API + '/admin/bookings/' + id + '/status', { method: 'PUT', headers: getJSONHeaders(), body: JSON.stringify({ status: newStatus }) });
+        if (res.ok) { showToast('Status updated', 'success'); loadAdminBookings(); }
+        else showToast('Failed', 'error');
+      } catch (e) { showToast('Error updating status', 'error'); }
     }
 
     // Init
