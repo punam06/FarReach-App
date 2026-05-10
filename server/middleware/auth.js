@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { ADMIN_EMAILS } = require('../config/schema');
+const { ADMIN_EMAILS = [] } = require('../config/schema');
 const JWT_SECRET = process.env.JWT_SECRET || 'torisom_secret_key_2024';
 
 function authenticateToken(req, res, next) {

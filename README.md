@@ -1,1 +1,119 @@
-# FarReach-App
+# Torisom - Bangladesh Tourism Explorer (FarReach-App)
+
+Welcome to **Torisom**, a comprehensive tourism exploration and planning web application specifically designed for discovering the beauty of Bangladesh. Torisom helps travelers find top destinations, estimate trip budgets, check local weather forecasts, hire guides, and navigate hotel bookings all in one unified platform.
+
+## 🎯 Project Purpose
+
+The purpose of Torisom is to promote domestic tourism in Bangladesh by simplifying the travel planning process. It acts as an all-in-one hub where users can:
+- **Discover:** Explore 100+ curated tourist attractions across the 8 divisions of Bangladesh.
+- **Plan:** Use built-in budget calculators to estimate transport, hotel, and guide costs.
+- **Prepare:** Check real-time weather and 5-day forecasts via OpenWeatherMap to ensure safe travels.
+- **Navigate:** View interactive Google Maps of destinations and find transportation routes.
+- **Connect:** Save favorite spots, leave reviews, and find certified local tour guides.
+
+## ✨ Key Features
+
+- **Secure Authentication:** OTP-based email verification for user sign-ups and secure login.
+- **Role-based Dashboards:** 
+  - **User Dashboard:** Manage saved spots, track reviews, and update profiles.
+  - **Admin Dashboard:** Full CRUD management over tourist spots, guides, users, and overall analytics.
+- **Smart Filtering:** Find destinations by division, budget (Low/High), road conditions, and trip type (Adventure, Family, Wildlife, etc.).
+- **API Integrations:** Seamlessly fetches data from OpenWeatherMap API and Google Maps Embed API.
+- **Responsive Design:** Beautiful, modern, and mobile-friendly UI built with HTML, Vanilla CSS, and JavaScript.
+
+---
+
+## ⚙️ Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+- [Node.js](https://nodejs.org/) (Version 18.x or higher)
+- [MySQL Server](https://dev.mysql.com/downloads/mysql/) (Running locally or remotely)
+- Git (Optional, for cloning the repository)
+
+---
+
+## 🚀 Installation Guide
+
+### Step 1: Clone or Download the Repository
+If you have Git installed, run:
+```bash
+git clone https://github.com/punam06/FarReach-App.git
+cd FarReach-App
+```
+*(If you don't have Git, download the ZIP file from the repository and extract it.)*
+
+### Step 2: Install Dependencies (All Operating Systems)
+Open your terminal (macOS/Linux) or Command Prompt/PowerShell (Windows), navigate to the `server` directory, and install the required Node modules:
+```bash
+cd server
+npm install
+```
+
+### Step 3: Setup the Database
+1. Make sure your MySQL server is running.
+2. The application is configured to automatically create the database (`torisom_db`) and seed it with initial data upon the first run.
+3. *Note:* Ensure your MySQL root user has no password. If it does, you will need to update the `.env` file in the next step.
+
+### Step 4: Environment Variables (.env Configuration)
+In the `server` directory, create a file named `.env` (or rename the provided `.env.example`).
+Add the following configuration, adjusting the database credentials and API keys as needed:
+
+```ini
+# Server Config
+PORT=3000
+JWT_SECRET=your_secure_jwt_secret_key
+
+# Database Config (Update if your MySQL uses a different user/password)
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=torisom_db
+
+# OTP and Email Config (Nodemailer setup)
+OTP_EXPIRY_MINUTES=10
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+SMTP_FROM=your_email@gmail.com
+
+# External APIs
+OPENWEATHER_API_KEY=your_openweathermap_api_key
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+```
+
+---
+
+## 💻 How to Run the Application
+
+### On Windows
+1. Open Command Prompt or PowerShell.
+2. Navigate to the project folder and into the `server` directory.
+3. Start the server:
+   ```cmd
+   npm start
+   ```
+4. Open your web browser and go to: `http://localhost:3000`
+
+### On macOS / Linux
+1. Open your Terminal.
+2. Navigate to the project directory:
+   ```bash
+   cd path/to/FarReach-App/server
+   ```
+3. Start the server:
+   ```bash
+   npm start
+   ```
+   *(For development with auto-reload, you can use `npm run dev`)*
+4. Open your web browser and go to: `http://localhost:3000`
+
+---
+
+## 👤 Usage Guide
+
+1. **Exploring:** When you land on the homepage, you can instantly search for districts or tourist spots without logging in. Click on any destination to load the interactive "Destination Details" panel.
+2. **Registering:** Click "Sign Up" in the top navigation bar. Enter your details, receive an OTP via email, and verify your account.
+3. **User Capabilities:** Once logged in, you can save spots, write reviews, and access your personal User Dashboard.
+4. **Admin Capabilities:** If registered with an authorized admin email, you will automatically be directed to the Admin Dashboard upon logging in, where you can manage the application's content database.

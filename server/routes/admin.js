@@ -6,7 +6,7 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 const storage = multer.diskStorage({
-  destination: path.join(__dirname, '../../spot pictures'),
+  destination: path.join(__dirname, '../../spot-pictures'),
   filename: (req, file, cb) => {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, unique + path.extname(file.originalname));

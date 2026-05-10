@@ -672,7 +672,7 @@ function displayPopularGrid(filteredSpots) {
     card.className = 'spot-card';
     card.innerHTML = `
       <div class="spot-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; height: 200px; color: white; font-size: 48px;">
-        <img src="spot pictures/${spotImages[spot.name]}" style="width:100%;height:200px;object-fit:cover;">
+        <img src="spot-pictures/${spotImages[spot.name]}" style="width:100%;height:200px;object-fit:cover;">
       </div>
       <div class="spot-content">
         <h3>${spot.name}</h3>
@@ -705,7 +705,7 @@ function displayFeatured(spot) {
   if (featuredCard) {
     const imageFile = spotImages[spot.name];
     if (imageFile) {
-      const imageUrl = `spot pictures/${encodeURIComponent(imageFile)}`;
+      const imageUrl = `spot-pictures/${encodeURIComponent(imageFile)}`;
       featuredCard.style.background = `linear-gradient(180deg, rgba(3, 12, 7, 0.28), rgba(3, 12, 7, 0.82)), url("${imageUrl}") center / cover no-repeat`;
     } else {
       featuredCard.style.background = 'linear-gradient(135deg, rgba(70, 201, 109, 0.25), rgba(6, 17, 11, 0.9))';
@@ -744,7 +744,7 @@ function selectSpot(spot) {
     visual.style.justifyContent = 'center';
     visual.style.fontSize = '80px';
     visual.style.minHeight = '300px';
-    visual.innerHTML = '<img src="spot pictures/' + spotImages[spot.name] + '" style="width:100%;height:100%;object-fit:cover;">';
+    visual.innerHTML = '<img src="spot-pictures/' + spotImages[spot.name] + '" style="width:100%;height:100%;object-fit:cover;">';
   }
 
   updateBudgetSection(spot);
@@ -1026,9 +1026,25 @@ function initializeTabContent(tabName) {
   }
 }
 
+let appConfigCache = null;
+async function fetchAppConfig() {
+  if (appConfigCache) return appConfigCache;
+  try {
+    const res = await fetch(`${API_BASE}/api/config`);
+    if (res.ok) {
+      appConfigCache = await res.json();
+      return appConfigCache;
+    }
+  } catch (e) {
+    console.error('Failed to fetch config:', e);
+  }
+  return { googleMapsApiKey: 'AIzaSyA06LZtXWwqLA9GsLjxYFxD9tF0DijV7AU' };
+}
+
 // ==== MAP FUNCTION ====
-function loadMap(district, spotName) {
-  const GOOGLE_MAPS_API_KEY = 'AIzaSyA06LZtXWwqLA9GsLjxYFxD9tF0DijV7AU';
+async function loadMap(district, spotName) {
+  const config = await fetchAppConfig();
+  const GOOGLE_MAPS_API_KEY = config.googleMapsApiKey || 'AIzaSyA06LZtXWwqLA9GsLjxYFxD9tF0DijV7AU';
   const mapContainer = document.getElementById('mapContainer');
   if (!mapContainer) return;
 
@@ -1333,15 +1349,18 @@ function checkLogin() {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const loginStatus = document.getElementById('loginStatus');
   const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
   if (isLoggedIn) {
     const email = localStorage.getItem('userEmail') || 'User';
     if (loginStatus) loginStatus.textContent = email;
     if (loginBtn) loginBtn.textContent = 'Logout';
     if (loginBtn) loginBtn.onclick = logout;
+    if (signupBtn) signupBtn.style.display = 'none';
   } else {
     if (loginStatus) loginStatus.textContent = '';
     if (loginBtn) loginBtn.textContent = 'Login';
     if (loginBtn) loginBtn.onclick = showLoginModal;
+    if (signupBtn) signupBtn.style.display = 'inline-block';
   }
   renderReviews();
   updateCheckLogin();
@@ -1353,6 +1372,126 @@ function showLoginModal() {
 function closeLoginModal() {
   document.getElementById('loginModal').style.display = 'none';
 }
+
+let tempSignupEmail = '';
+let tempVerificationToken = '';
+
+function showSignupModal() {
+  const modal = document.getElementById('signupModal');
+  if (modal) modal.style.display = 'block';
+  const err = document.getElementById('signupError');
+  if (err) err.style.display = 'none';
+}
+function closeSignupModal() {
+  const modal = document.getElementById('signupModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function showOtpModal() {
+  const modal = document.getElementById('otpModal');
+  if (modal) modal.style.display = 'block';
+  const err = document.getElementById('otpError');
+  if (err) err.style.display = 'none';
+}
+function closeOtpModal() {
+  const modal = document.getElementById('otpModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function signup() {
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  const errEl = document.getElementById('signupError');
+
+  if (!name || !email || !password) {
+    errEl.textContent = 'Please fill all fields';
+    errEl.style.display = 'block';
+    return;
+  }
+  
+  try {
+    errEl.style.display = 'none';
+    const res = await fetch(`${API_BASE}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      tempSignupEmail = data.email;
+      tempVerificationToken = data.verificationToken;
+      closeSignupModal();
+      showOtpModal();
+    } else {
+      errEl.textContent = data.error || 'Signup failed';
+      errEl.style.display = 'block';
+    }
+  } catch (err) {
+    errEl.textContent = 'Connection error. Make sure server is running.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function verifyOtp() {
+  const otp = document.getElementById('otpInput').value.trim();
+  const errEl = document.getElementById('otpError');
+  if (!otp) {
+    errEl.textContent = 'Enter OTP';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    errEl.style.display = 'none';
+    const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${tempVerificationToken}`
+      },
+      body: JSON.stringify({ otp })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('userEmail', tempSignupEmail);
+      if (data.token) localStorage.setItem('token', data.token);
+      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
+      closeOtpModal();
+      checkLogin();
+      alert('Signup and verification successful!');
+    } else {
+      errEl.textContent = data.error || 'Verification failed';
+      errEl.style.display = 'block';
+    }
+  } catch (err) {
+    errEl.textContent = 'Connection error.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function resendOtp() {
+  const errEl = document.getElementById('otpError');
+  try {
+    errEl.style.display = 'none';
+    const res = await fetch(`${API_BASE}/api/auth/resend-otp`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${tempVerificationToken}` }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('OTP resent successfully to ' + tempSignupEmail);
+    } else {
+      errEl.textContent = data.error || 'Failed to resend';
+      errEl.style.display = 'block';
+    }
+  } catch (err) {
+    errEl.textContent = 'Connection error.';
+    errEl.style.display = 'block';
+  }
+}
+
 function login() {
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;

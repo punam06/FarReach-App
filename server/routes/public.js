@@ -40,9 +40,9 @@ router.get('/weather', async (req, res) => {
 
     const key = process.env.OPENWEATHER_API_KEY;
     if (!key) {
-    // Return mock forecast data for development when API key is missing
-    return res.json({ district, date, data: mockForecastData(district) });
-  }
+      // Return mock weather data for development when API key is missing
+      return res.json(mockWeatherData(district));
+    }
 
     const q = encodeURIComponent(`${district},BD`);
     const url = `https://api.openweathermap.org/data/2.5/weather?q=${q}&units=metric&appid=${key}`;
@@ -141,6 +141,12 @@ router.post('/hotels/search', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message || 'Server error' });
   }
+});
+
+router.get('/config', (req, res) => {
+  res.json({
+    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyA06LZtXWwqLA9GsLjxYFxD9tF0DijV7AU'
+  });
 });
 
 module.exports = router;

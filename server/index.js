@@ -14,7 +14,7 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(express.static(path.join(__dirname, '..')));
-app.use('/spot-pictures', express.static(path.join(__dirname, '..', 'spot pictures')));
+app.use('/spot-pictures', express.static(path.join(__dirname, '..', 'spot-pictures')));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/spots', require('./routes/spots'));
