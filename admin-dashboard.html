@@ -76,7 +76,7 @@
       <!-- USERS -->
       <div class="page-section" id="page-users">
         <div class="page-header"><h1><i class="fas fa-users"></i> User Management</h1><p>Manage registered users and roles</p></div>
-        <div class="card"><div class="card-body" style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Verified</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="users-table"></tbody></table></div></div>
+        <div class="card"><div class="card-body" style="overflow-x:auto;"><table class="data-table"><thead><tr><th>User Info</th><th>Contact Profile</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="users-table"></tbody></table></div></div>
       </div>
       <!-- REVIEWS -->
       <div class="page-section" id="page-reviews">
@@ -447,7 +447,10 @@
         var tb = document.getElementById('users-table');
         if (data.users.length === 0) { tb.innerHTML = '<tr><td colspan="6" class="empty-state">No users</td></tr>'; return; }
         tb.innerHTML = data.users.map(function(u) {
-          return '<tr><td>' + u.name + '</td><td>' + u.email + '</td><td><span class="badge ' + (u.role === 'admin' ? 'badge-warning' : 'badge-info') + '">' + u.role + '</span></td><td>' + (u.is_verified ? '<span class="badge badge-success">Verified</span>' : '<span class="badge badge-danger">Unverified</span>') + '</td><td>' + new Date(u.created_at).toLocaleDateString() + '</td><td>' + (u.role !== 'admin' ? '<button class="btn-sm edit" onclick="toggleRole(' + u.id + ',\'' + u.role + '\')"><i class="fas fa-user-shield"></i> Make Admin</button> ' : '') + '<button class="btn-sm delete" onclick="deleteUser(' + u.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
+          var avatar = u.profile_pic ? '<img src="' + spotImage(u.profile_pic) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;margin-right:10px;">' : '<div style="width:36px;height:36px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;margin-right:10px;font-weight:bold;">' + u.name.charAt(0) + '</div>';
+          var userInfo = '<div style="display:flex;align-items:center;">' + avatar + '<div><strong>' + u.name + '</strong><br><small style="color:var(--muted);">' + u.email + '</small></div></div>';
+          var contactProfile = '<div style="font-size:13px;"><i class="fas fa-phone"></i> ' + (u.phone || 'N/A') + '<br><i class="fas fa-map-marker-alt"></i> ' + (u.address || 'N/A') + '</div>';
+          return '<tr><td>' + userInfo + '</td><td>' + contactProfile + '</td><td><span class="badge ' + (u.role === 'admin' ? 'badge-warning' : 'badge-info') + '">' + u.role + '</span></td><td>' + (u.is_verified ? '<span class="badge badge-success">Verified</span>' : '<span class="badge badge-danger">Unverified</span>') + '</td><td>' + new Date(u.created_at).toLocaleDateString() + '</td><td>' + (u.role !== 'admin' ? '<button class="btn-sm edit" onclick="toggleRole(' + u.id + ',\'' + u.role + '\')"><i class="fas fa-user-shield"></i> Make Admin</button> ' : '') + '<button class="btn-sm delete" onclick="deleteUser(' + u.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
         }).join('');
       } catch (e) { showToast('Failed to load', 'error'); }
     }

@@ -1,168 +1,7 @@
 // ==== TOURIST SPOTS DATA ====
-const spots = [
-  { 
-    id: 1, 
-    name: 'Cox\'s Bazar Beach', 
-    district: 'Cox\'s Bazar', 
-    category: 'Beach', 
-    description: 'The world\'s longest natural beach stretching 120 km along the Bay of Bengal.',
-    history: 'Discovered in 1798 by British officer Captain Hiram Cox, this beach gets its name from him. It served as a trading hub for centuries and played a crucial role in the region\'s maritime history during the British colonial period.'
-  },
-  { 
-    id: 2, 
-    name: 'Sundarbans', 
-    district: 'Khulna', 
-    category: 'Wildlife', 
-    description: 'Largest mangrove forest in the world, home to the Royal Bengal Tiger.',
-    history: 'Declared a UNESCO World Heritage Site in 1997, the Sundarbans has been a vital ecosystem for over 4,000 years. Ancient Buddhist monasteries and temples dating back to the 12th century have been discovered within its dense mangrove forests.'
-  },
-  { 
-    id: 3, 
-    name: 'Saint Martin Island', 
-    district: 'Cox\'s Bazar', 
-    category: 'Island', 
-    description: 'A small island with pristine beaches and coral reefs perfect for diving.',
-    history: 'Originally known as "Narikel Jinjira" (Coconut Island), this coral island has been inhabited for over 200 years. The local Saint Martin community traces its roots to Arakanese settlers who arrived in the 18th century, bringing with them unique cultural traditions.'
-  },
-  { 
-    id: 4, 
-    name: 'Rangamati', 
-    district: 'Rangamati', 
-    category: 'Mountain', 
-    description: 'Scenic hill tracts with beautiful waterfalls and tribal culture.',
-    history: 'Established as a administrative center in 1860 by the British, Rangamati has been the heart of the Chittagong Hill Tracts. The region served as a crucial trade route between Bengal and Burma, with evidence of ancient settlements dating back to the 7th century.'
-  },
-  { 
-    id: 5, 
-    name: 'Bandarban', 
-    district: 'Bandarban', 
-    category: 'Mountain', 
-    description: 'Adventure destination with trekking trails and indigenous villages.',
-    history: 'Bandarban was historically a part of the Arakan Kingdom before coming under British control in 1824. The region has been home to various indigenous tribes for centuries, each maintaining their unique cultural practices and traditional governance systems.'
-  },
-  { 
-    id: 6, 
-    name: 'Sylhet Tea Gardens', 
-    district: 'Sylhet', 
-    category: 'Nature', 
-    description: 'Vast green tea estates across rolling hills in the northeast region.',
-    history: 'Tea cultivation began in Sylhet in 1849 when British planters discovered the ideal climate conditions. The first commercial tea garden was established at Malnicherra, and by the early 20th century, Sylhet became one of the world\'s finest tea-producing regions.'
-  },
-  { 
-    id: 7, 
-    name: 'Sreemangal', 
-    district: 'Moulvibazar', 
-    category: 'Nature', 
-    description: 'Center of tea and rubber plantations with eco-tourism activities.',
-    history: 'Known as the "Tea Capital" of Bangladesh, Sreemangal has been a center of tea cultivation since the British era. The region also played a significant role in the country\'s rubber industry development during the 20th century.'
-  },
-  { 
-    id: 8, 
-    name: 'Jaflong', 
-    district: 'Sylhet', 
-    category: 'Nature', 
-    description: 'A picturesque location with stone mines and local flora.',
-    history: 'Jaflong has been a significant trading post for centuries, serving as a gateway between the plains and the hill regions. The stone extraction industry here dates back to the Mughal period, when these stones were used in major architectural projects.'
-  },
-  { 
-    id: 9, 
-    name: 'Lawachara National Park', 
-    district: 'Moulvibazar', 
-    category: 'Wildlife', 
-    description: 'Rainforest sanctuary with diverse bird species and hiking trails.',
-    history: 'Established in 1996, Lawachara protects one of Bangladesh\'s last remaining remnant forests. The area has been a research site for decades, with studies documenting over 200 bird species and numerous endangered plant species.'
-  },
-  { 
-    id: 10, 
-    name: 'Kuakata Beach', 
-    district: 'Patuakhali', 
-    category: 'Beach', 
-    description: 'Beautiful beach where you can see both sunrise and sunset over water.',
-    history: 'Kuakata gets its name from "Kua" (well) dug by early Rakhine settlers. The beach has been a sacred site for centuries, with local legends telling of Buddhist monks who meditated here. It became a popular tourist destination in the 1990s.'
-  },
-  { 
-    id: 11, 
-    name: 'Chittagong Hill Tracts', 
-    district: 'Chittagong', 
-    category: 'Mountain', 
-    description: 'Scenic mountainous area with waterfalls, caves, and tribal heritage.',
-    history: 'The Hill Tracts have been inhabited by indigenous tribes for over 2,000 years. Ancient Buddhist ruins and monasteries dating back to the 8th century have been discovered, indicating the region\'s importance in early Buddhist history.'
-  },
-  { 
-    id: 12, 
-    name: 'Sonargaon', 
-    district: 'Narayanganj', 
-    category: 'Historical', 
-    description: 'Historic city with traditional architecture and folk art museum.',
-    history: 'The ancient capital of Bengal from the 13th to 16th century, Sonargaon was a major center of trade and culture. It served as the administrative headquarters of the Sultanate of Bengal and later the Mughal Subah.'
-  },
-  { 
-    id: 13, 
-    name: 'Lalbagh Fort', 
-    district: 'Dhaka', 
-    category: 'Historical', 
-    description: 'Mughal-era fortress showcasing rich architectural heritage.',
-    history: 'Built in 1678 by Prince Azam Shah, son of Emperor Aurangzeb, this fort represents the pinnacle of Mughal architecture in Bengal. The fort was never completed due to the prince\'s recall to Delhi, but it remains a symbol of Mughal grandeur.'
-  },
-  { 
-    id: 14, 
-    name: 'Ahsan Manzil', 
-    district: 'Dhaka', 
-    category: 'Historical', 
-    description: 'Stunning palace complex from the 19th century along the Buriganga River.',
-    history: 'Built in 1872 by Nawab Abdul Gani, this pink palace served as the residence of the Dhaka Nawabs. It witnessed many historical events including the Partition of Bengal in 1905 and later became a symbol of Dhaka\'s aristocratic heritage.'
-  },
-  { 
-    id: 15, 
-    name: 'Nilgiri', 
-    district: 'Bandarban', 
-    category: 'Mountain', 
-    description: 'Mountain resort with panoramic views and trekking opportunities.',
-    history: 'Nilgiri has been a sacred site for indigenous tribes for centuries, who believed it to be the abode of their deities. The British established a sanatorium here in the 19th century due to its cool climate and scenic beauty.'
-  },
-  { 
-    id: 16, 
-    name: 'Ramsagar National Park', 
-    district: 'Dinajpur', 
-    category: 'Wildlife', 
-    description: 'Historic natural park with scenic lake and botanical gardens.',
-    history: 'The Ramsagar Lake was constructed in 1750-1758 by Maharaja Ram Nath to solve water scarcity issues. The surrounding forest has been protected for over 250 years, making it one of Bangladesh\'s oldest conservation areas.'
-  },
-  { 
-    id: 17, 
-    name: 'Bisnakandi', 
-    district: 'Sylhet', 
-    category: 'Nature', 
-    description: 'Scenic area with stone-laden streams and natural beauty.',
-    history: 'Bisnakandi has been a center of stone trade for centuries, with the unique black stones here being used in construction throughout the region. The area was also a strategic point during various historical conflicts.'
-  },
-  { 
-    id: 18, 
-    name: 'Foy\'s Lake', 
-    district: 'Chittagong', 
-    category: 'Lake', 
-    description: 'Artificial lake surrounded by hills, perfect for water activities.',
-    history: 'Created in 1924 by the British as an alternative water supply, Foy\'s Lake was named after Mr. Foy, the then-Chief Commissioner of Chittagong. The lake quickly became a popular recreational spot for British officials and locals alike.'
-  },
-  { 
-    id: 19, 
-    name: 'Patenga Beach', 
-    district: 'Chittagong', 
-    category: 'Beach', 
-    description: 'Popular beach near Chittagong with waves and maritime views.',
-    history: 'Patenga has been a crucial maritime port for centuries, serving as a gateway for trade and naval activities. During World War II, it played a strategic role in Allied operations in the Bay of Bengal.'
-  },
-  { 
-    id: 20, 
-    name: 'Tajhat Palace', 
-    district: 'Rangpur', 
-    category: 'Historical', 
-    description: 'Magnificent Raj-era palace with impressive architecture.',
-    history: 'Built in the early 20th century by Maharaja Kumar Gopal Lal Roy, this palace showcases Indo-Saracenic architectural style. It served as the royal residence until the abolition of the zamindari system in 1950, after which it was converted into a museum.'
-  }
-];
+let spots = [];
+let allSpots = [];
 
-let allSpots = [...spots];
 let currentCategory = 'All';
 let currentSelectedSpot = null;
 
@@ -886,7 +725,27 @@ function updateSearchHint(count, query) {
   }
 }
 
-function initializePage() {
+async function initializePage() {
+  checkLogin();
+  updateCheckLogin();
+
+  try {
+    const res = await fetch(`${API_BASE}/api/spots`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.spots && data.spots.length > 0) {
+        spots = data.spots.map(s => ({
+          ...s,
+          district: s.district_name || 'Unknown',
+          division: s.division_name || 'Unknown',
+        }));
+        allSpots = [...spots];
+      }
+    }
+  } catch (e) {
+    console.error('Failed to fetch spots from DB', e);
+  }
+
   // Initialize district data structures
   window.districtData = {};
   spots.forEach(s => {
@@ -1637,40 +1496,76 @@ function setupStarRating() {
 }
 
 // ===== REVIEWS =====
-function renderReviews() {
+async function renderReviews() {
   const container = document.getElementById('reviewsContainer');
   if (!container) return;
-  const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
-  if (reviews.length === 0) {
-    container.innerHTML = '<p style="color:var(--muted);">No reviews yet. Be the first to review!</p>';
-    return;
+  if (!currentSelectedSpot) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/reviews/public`);
+    if (res.ok) {
+      const data = await res.json();
+      const spotReviews = data.reviews.filter(r => r.spot_id === currentSelectedSpot.id);
+      
+      if (spotReviews.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);">No reviews yet. Be the first!</p>';
+        return;
+      }
+      container.innerHTML = spotReviews.map(r => `
+        <div class="review-card">
+          <div class="review-header">
+            <span class="review-email">${r.user_name || 'User'}</span>
+            <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+          </div>
+          <p class="review-text">${r.text}</p>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    container.innerHTML = '<p style="color:var(--muted);">Could not load reviews.</p>';
   }
-  container.innerHTML = reviews.map(r => `
-    <div class="review-card">
-      <div class="review-header">
-        <span class="review-email">${r.email}</span>
-        <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
-      </div>
-      <p class="review-text">${r.text}</p>
-    </div>
-  `).join('');
 }
 
-function submitReview() {
-  if (localStorage.getItem('isLoggedIn') !== 'true') {
-    alert('Please login to submit a review');
+async function submitReview() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    showLoginModal();
     return;
   }
   const text = document.getElementById('reviewText').value.trim();
   if (!text) { alert('Please write a review'); return; }
   if (selectedRating === 0) { alert('Please select a rating'); return; }
-  const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
-  reviews.push({ email: localStorage.getItem('userEmail') || 'User', rating: selectedRating, text: text, date: new Date().toISOString() });
-  localStorage.setItem('reviews', JSON.stringify(reviews));
-  document.getElementById('reviewText').value = '';
-  selectedRating = 0;
-  document.querySelectorAll('#starRating .star').forEach(s => s.textContent = '☆');
-  renderReviews();
+  
+  if (!currentSelectedSpot || !currentSelectedSpot.id) {
+    alert('Cannot find spot details.');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/user/reviews`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        spot_id: currentSelectedSpot.id,
+        rating: selectedRating,
+        text: text
+      })
+    });
+    if (res.ok) {
+      document.getElementById('reviewText').value = '';
+      selectedRating = 0;
+      document.querySelectorAll('#starRating .star').forEach(s => s.textContent = '☆');
+      renderReviews();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Failed to submit review');
+    }
+  } catch (err) {
+    alert('Network error');
+  }
 }
 
 // ===== HOMEPAGE REVIEW =====
@@ -1688,41 +1583,69 @@ function setupHomepageStarRating() {
   });
 }
 
-function renderHomepageReviews() {
+async function renderHomepageReviews() {
   const container = document.getElementById('homepageReviewContainer');
   if (!container) return;
-  const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
-  if (reviews.length === 0) {
-    container.innerHTML = '<p style="color:var(--muted);">No reviews yet.</p>';
-    return;
+  
+  try {
+    const res = await fetch(`${API_BASE}/api/reviews/public`);
+    if (res.ok) {
+      const data = await res.json();
+      const generalReviews = data.reviews.filter(r => r.spot_id === null);
+      if (generalReviews.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);">No reviews yet.</p>';
+        return;
+      }
+      container.innerHTML = generalReviews.slice(0, 5).map(r => `
+        <div class="review-card">
+          <div class="review-header">
+            <span class="review-email">${r.user_name || 'User'}</span>
+            <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+          </div>
+          <p class="review-text">${r.text}</p>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    container.innerHTML = '<p style="color:var(--muted);">Could not load reviews.</p>';
   }
-  container.innerHTML = reviews.slice(-3).map(r => `
-    <div class="review-card">
-      <div class="review-header">
-        <span class="review-email">${r.email}</span>
-        <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
-      </div>
-      <p class="review-text">${r.text}</p>
-    </div>
-  `).join('');
 }
 
-function submitHomepageReview() {
-  if (localStorage.getItem('isLoggedIn') !== 'true') {
-    window.location.href = 'login.html';
+async function submitHomepageReview() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    showLoginModal();
     return;
   }
   const text = document.getElementById('homepageReviewText').value.trim();
   if (!text) { alert('Please write a review'); return; }
   if (homepageSelectedRating === 0) { alert('Please select a rating'); return; }
-  const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
-  reviews.push({ email: localStorage.getItem('userEmail') || 'User', rating: homepageSelectedRating, text: text, date: new Date().toISOString() });
-  localStorage.setItem('reviews', JSON.stringify(reviews));
-  document.getElementById('homepageReviewText').value = '';
-  homepageSelectedRating = 0;
-  document.querySelectorAll('#homepageStarRating .star').forEach(s => s.textContent = '☆');
-  renderHomepageReviews();
-  renderReviews();
+  
+  try {
+    const res = await fetch(`${API_BASE}/api/user/reviews`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        spot_id: null, // null for general platform reviews
+        rating: homepageSelectedRating,
+        text: text
+      })
+    });
+    if (res.ok) {
+      document.getElementById('homepageReviewText').value = '';
+      homepageSelectedRating = 0;
+      document.querySelectorAll('#homepageStarRating .star').forEach(s => s.textContent = '☆');
+      renderHomepageReviews();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Failed to submit review');
+    }
+  } catch (err) {
+    alert('Network error');
+  }
 }
 
 function updateCheckLogin() {

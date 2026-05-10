@@ -33,6 +33,35 @@ router.get('/health', async (req, res) => {
   res.json({ ok: true, service: 'tourismapp-server' });
 });
 
+router.get('/spots', async (req, res) => {
+  try {
+    const [spots] = await pool.query(`
+      SELECT s.*, d.name as district_name, div.name as division_name 
+      FROM spots s 
+      LEFT JOIN districts d ON s.district_id = d.id 
+      LEFT JOIN divisions div ON s.division_id = div.id 
+      ORDER BY s.created_at DESC
+    `);
+    res.json({ spots });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch spots' });
+  }
+});
+
+router.get('/reviews/public', async (req, res) => {
+  try {
+    const [reviews] = await pool.query(`
+      SELECT r.id, r.spot_id, r.rating, r.text, r.created_at, u.name as user_name
+      FROM reviews r
+      JOIN users u ON r.user_id = u.id
+      ORDER BY r.created_at DESC
+    `);
+    res.json({ reviews });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+});
+
 router.get('/weather', async (req, res) => {
   try {
     const district = normalizeDistrict(req.query.district);

@@ -67,7 +67,7 @@ async function initializeDatabase() {
     await connection.query(`CREATE TABLE IF NOT EXISTS reviews (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
-      spot_id INT NOT NULL,
+      spot_id INT,
       rating TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
       text TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -75,6 +75,10 @@ async function initializeDatabase() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (spot_id) REFERENCES spots(id) ON DELETE CASCADE
     )`);
+
+    try {
+      await connection.query('ALTER TABLE reviews MODIFY spot_id INT NULL');
+    } catch (e) {}
 
     await connection.query(`CREATE TABLE IF NOT EXISTS saved_spots (
       id INT AUTO_INCREMENT PRIMARY KEY,

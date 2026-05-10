@@ -46,10 +46,12 @@ router.get('/reviews', authenticateToken, async (req, res) => {
 router.post('/reviews', authenticateToken, async (req, res) => {
   try {
     const { spot_id, rating, text } = req.body;
-    if (!spot_id || !rating) return res.status(400).json({ error: 'Spot ID and rating are required.' });
-    const [existing] = await pool.query('SELECT id FROM reviews WHERE user_id = ? AND spot_id = ?', [req.user.id, spot_id]);
-    if (existing.length > 0) return res.status(400).json({ error: 'You already reviewed this spot.' });
-    await pool.query('INSERT INTO reviews (user_id, spot_id, rating, text) VALUES (?, ?, ?, ?)', [req.user.id, spot_id, rating, text || '']);
+    if (!rating) return res.status(400).json({ error: 'Rating is required.' });
+    if (spot_id) {
+      const [existing] = await pool.query('SELECT id FROM reviews WHERE user_id = ? AND spot_id = ?', [req.user.id, spot_id]);
+      if (existing.length > 0) return res.status(400).json({ error: 'You already reviewed this spot.' });
+    }
+    await pool.query('INSERT INTO reviews (user_id, spot_id, rating, text) VALUES (?, ?, ?, ?)', [req.user.id, spot_id || null, rating, text || '']);
     res.json({ message: 'Review submitted successfully.' });
   } catch (err) { res.status(500).json({ error: 'Failed to submit review.' }); }
 });

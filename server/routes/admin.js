@@ -175,7 +175,7 @@ router.delete('/guides/:id', async (req, res) => {
 
 router.get('/users', async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT id, name, email, role, is_verified, created_at FROM users ORDER BY created_at DESC');
+    const [users] = await pool.query('SELECT id, name, email, role, is_verified, phone, address, profile_pic, created_at FROM users ORDER BY created_at DESC');
     res.json({ users });
   } catch (err) { res.status(500).json({ error: 'Failed to fetch users.' }); }
 });
