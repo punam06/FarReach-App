@@ -1111,7 +1111,7 @@ async function bookHotel(hotelName, totalPrice, checkin, checkout) {
 
   if (!user.phone || !user.address) {
     alert("Please complete your profile (add Phone and Address) before making a booking.");
-    window.location.href = '/user-dashboard#profile';
+    window.location.href = 'user-dashboard.html#profile';
     return;
   }
 
@@ -1181,7 +1181,7 @@ async function hireGuide(guideName, price) {
 
   if (!user.phone || !user.address) {
     alert("Please complete your profile (add Phone and Address) before hiring a guide.");
-    window.location.href = '/user-dashboard#profile';
+    window.location.href = 'user-dashboard.html#profile';
     return;
   }
 
@@ -1277,10 +1277,10 @@ function checkLogin() {
     if (dashboardLink) {
       dashboardLink.style.display = 'inline-block';
       if (user.role === 'admin') {
-        dashboardLink.href = '/admin-dashboard';
+        dashboardLink.href = 'admin-dashboard.html';
         dashboardLink.innerHTML = '<i class="fas fa-tachometer-alt"></i> Admin Panel';
       } else {
-        dashboardLink.href = '/user-dashboard';
+        dashboardLink.href = 'user-dashboard.html';
         dashboardLink.innerHTML = '<i class="fas fa-tachometer-alt"></i> Dashboard';
       }
     }

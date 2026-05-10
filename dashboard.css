@@ -1,8 +1,8 @@
 /* ===== Dashboard Shared Styles - Lighter UI ===== */
 :root {
-  --primary: #4A90D9;
-  --primary-light: #E8F0FE;
-  --primary-dark: #2C6FB5;
+  --primary: #2ea857;
+  --primary-light: #e6f6ec;
+  --primary-dark: #1f7a3d;
   --accent: #F5A623;
   --bg: #F7F9FC;
   --card-bg: #FFFFFF;

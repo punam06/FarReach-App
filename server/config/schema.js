@@ -5,6 +5,7 @@ const ADMIN_EMAILS = [
   'punam.papri@gmail.com',
   'rebekasultanaorce455@gmail.com'
 ];
+const bcrypt = require('bcryptjs');
 
 async function initializeDatabase() {
   const connection = await pool.getConnection();
@@ -231,6 +232,18 @@ async function initializeDatabase() {
         );
       }
       console.log('Guides seeded');
+    }
+
+    // SEED ADMIN ACCOUNTS
+    const adminPasswordHash = await bcrypt.hash('admin123', 10);
+    for (const email of ADMIN_EMAILS) {
+      const [existingAdmin] = await connection.query('SELECT id FROM users WHERE email = ?', [email]);
+      if (existingAdmin.length === 0) {
+        await connection.query(
+          'INSERT INTO users (name, email, password_hash, role, is_verified) VALUES (?, ?, ?, ?, ?)',
+          [email.split('@')[0], email, adminPasswordHash, 'admin', 1]
+        );
+      }
     }
 
     console.log('Database initialization complete');

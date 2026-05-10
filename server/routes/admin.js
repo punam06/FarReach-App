@@ -200,7 +200,7 @@ router.get('/reviews', async (req, res) => {
   try {
     const [reviews] = await pool.query(
       `SELECT r.*, u.name as user_name, u.email as user_email, s.name as spot_name
-       FROM reviews r JOIN users u ON r.user_id = u.id JOIN spots s ON r.spot_id = s.id
+       FROM reviews r JOIN users u ON r.user_id = u.id LEFT JOIN spots s ON r.spot_id = s.id
        ORDER BY r.created_at DESC`
     );
     res.json({ reviews });

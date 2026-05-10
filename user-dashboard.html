@@ -104,17 +104,17 @@
   </div>
   <div class="toast" id="toast"></div>
   <script>
-    const API = window.location.origin + '/api';
+    const API = 'http://localhost:3000/api';
     let currentUser = null, editRating = 0;
     function checkAuth() {
       const token = localStorage.getItem('token'), user = localStorage.getItem('user');
-      if (!token || !user) { window.location.href = '/login'; return false; }
+      if (!token || !user) { window.location.href = 'login.html'; return false; }
       currentUser = JSON.parse(user);
-      if (currentUser.role === 'admin') { window.location.href = '/admin-dashboard'; return false; }
+      if (currentUser.role === 'admin') { window.location.href = 'admin-dashboard.html'; return false; }
       return true;
     }
     function getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }; }
-    function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }
+    function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = 'login.html'; }
     document.querySelectorAll('.sidebar-link[data-page]').forEach(link => {
       link.addEventListener('click', () => {
         document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
@@ -216,7 +216,7 @@
       try {
         const res = await fetch(API+'/auth/profile', {
           method: 'PUT',
-          headers: getHeaders(), // Don't set Content-Type for FormData, browser does it with boundary
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
           body: formData
         });
         const data = await res.json();

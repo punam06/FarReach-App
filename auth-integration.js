@@ -1,5 +1,5 @@
 // ===== AUTH INTEGRATION FOR TORISOM =====
-const API_BASE = window.location.origin + '/api';
+const API_BASE = 'http://localhost:3000/api';
 
 (function checkAuth() {
   const token = localStorage.getItem('token');
@@ -82,7 +82,7 @@ async function loginUser() {
       closeLoginModal();
     } else if (data.verification_required) {
       alert('Your email is not verified yet. Continue verification on the login page.');
-      window.location.href = '/login';
+      window.location.href = 'login.html';
     } else {
       alert(data.error || 'Login failed');
     }
