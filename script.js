@@ -747,6 +747,7 @@ async function initializePage() {
           division: s.division_name || 'Unknown',
         }));
         allSpots = [...spots];
+        displayPopularGrid(allSpots);
       }
     }
   } catch (e) {
@@ -1316,7 +1317,6 @@ function checkLogin() {
     if (logoutBtn) logoutBtn.style.display = 'none';
     if (dashboardLink) dashboardLink.style.display = 'none';
   }
-  renderReviews();
 }
 
 function logout() {
@@ -1366,69 +1366,7 @@ function setupStarRating() {
 }
 
 // ===== REVIEWS =====
-async function renderReviews() {
-  const container = document.getElementById('reviewsContainer');
-  if (!container) return;
-  if (!currentSelectedSpot) return;
-
-  try {
-    const res = await fetch(`${API_BASE}/api/reviews/public`);
-    if (res.ok) {
-      const data = await res.json();
-      const spotReviews = data.reviews.filter(r => r.spot_id === currentSelectedSpot.id);
-      
-      if (spotReviews.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted);">No reviews yet. Be the first!</p>';
-        return;
-      }
-      container.innerHTML = spotReviews.map(r => `
-        <div class="review-card">
-          <div class="review-header">
-            <span class="review-email">${r.user_name || 'User'}</span>
-            <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
-          </div>
-          <p class="review-text">${r.text}</p>
-        </div>
-      `).join('');
-    }
-  } catch (e) {
-    container.innerHTML = '<p style="color:var(--muted);">Could not load reviews.</p>';
-  }
-}
-
-async function submitReview() {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    showLoginModal();
-    return;
-  }
-  const text = document.getElementById('reviewText').value.trim();
-  if (!text) { alert('Please write a review'); return; }
-  if (selectedRating === 0) { alert('Please select a rating'); return; }
-  
-  if (!currentSelectedSpot || !currentSelectedSpot.id) {
-    alert('Cannot find spot details.');
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/api/user/reviews`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        spot_id: currentSelectedSpot.id,
-        rating: selectedRating,
-        text: text
-      })
-    });
-    if (res.ok) {
-      document.getElementById('reviewText').value = '';
-      selectedRating = 0;
-      document.querySelectorAll('#starRating .star').forEach(s => s.textContent = '☆');
-      renderReviews();
+      renderHomepageReviews();
     } else {
       const data = await res.json();
       alert(data.error || 'Failed to submit review');

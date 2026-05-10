@@ -141,6 +141,7 @@ For testing and management purposes, the following administrative accounts are i
 2. **Dynamic Content:** The homepage and dashboards are fully synchronized with the MySQL database.
 3. **Production Readiness:** The demo login system has been completely removed in favor of a secure, OTP-verified authentication flow.
 4. **Spot Visibility:** The homepage now displays up to 20 tourist spots by default, ensuring a rich initial experience for all users.
+5. **New Features:** Added Save Spot, Spot Reviews, and Admin Management fixes.
 
 ---
 
