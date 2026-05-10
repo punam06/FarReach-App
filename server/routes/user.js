@@ -47,23 +47,12 @@ router.post('/reviews', authenticateToken, async (req, res) => {
   try {
     const { spot_id, rating, text } = req.body;
     if (!rating) return res.status(400).json({ error: 'Rating is required.' });
+    
     if (spot_id) {
       const [existing] = await pool.query('SELECT id FROM reviews WHERE user_id = ? AND spot_id = ?', [req.user.id, spot_id]);
       if (existing.length > 0) return res.status(400).json({ error: 'You already reviewed this spot.' });
-      
-      // Fallback: Check for spot_id OR check if target_name matches spot name
-      const [spot] = await pool.query('SELECT name FROM spots WHERE id = ?', [spot_id]);
-      const spotName = spot.length > 0 ? spot[0].name : null;
-      
-      const [bookings] = await pool.query(
-        'SELECT id FROM bookings WHERE user_id = ? AND (spot_id = ? OR target_name = ?) AND status = "confirmed"', 
-        [req.user.id, spot_id, spotName]
-      );
-      
-      if (bookings.length === 0) {
-        return res.status(403).json({ error: 'You can only review a spot after having a confirmed booking (Hotel/Guide/etc) for it.' });
-      }
     }
+    
     await pool.query('INSERT INTO reviews (user_id, spot_id, rating, text) VALUES (?, ?, ?, ?)', [req.user.id, spot_id || null, rating, text || '']);
     res.json({ message: 'Review submitted successfully.' });
   } catch (err) {
@@ -133,7 +122,7 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
     const [reviewCount] = await pool.query('SELECT COUNT(*) as count FROM reviews WHERE user_id = ?', [req.user.id]);
     const [recentReviews] = await pool.query(
       `SELECT r.*, s.name as spot_name, s.image as spot_image
-       FROM reviews r JOIN spots s ON r.spot_id = s.id
+       FROM reviews r LEFT JOIN spots s ON r.spot_id = s.id
        WHERE r.user_id = ? ORDER BY r.created_at DESC LIMIT 5`, [req.user.id]
     );
     const [recentSaved] = await pool.query(
