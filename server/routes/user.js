@@ -34,27 +34,41 @@ router.delete('/saved-spots/:spotId', authenticateToken, async (req, res) => {
 
 router.get('/reviews', authenticateToken, async (req, res) => {
   try {
+    console.log('--- FETCHING USER REVIEWS ---', req.user.id);
     const [reviews] = await pool.query(
       `SELECT r.*, s.name as spot_name, s.image as spot_image
-       FROM reviews r JOIN spots s ON r.spot_id = s.id
+       FROM reviews r LEFT JOIN spots s ON r.spot_id = s.id
        WHERE r.user_id = ? ORDER BY r.created_at DESC`, [req.user.id]
     );
     res.json({ reviews });
-  } catch (err) { res.status(500).json({ error: 'Failed to fetch reviews.' }); }
+  } catch (err) { 
+    console.error('Fetch reviews error:', err);
+    res.status(500).json({ error: 'Failed to fetch reviews.' }); 
+  }
 });
 
 router.post('/reviews', authenticateToken, async (req, res) => {
   try {
     const { spot_id, rating, text } = req.body;
+    console.log('--- REVIEW SUBMISSION ---');
+    console.log('User ID:', req.user.id);
+    console.log('Spot ID:', spot_id);
+    console.log('Rating:', rating);
+    console.log('Text:', text);
+    
     if (!rating) return res.status(400).json({ error: 'Rating is required.' });
     
     if (spot_id) {
       const [existing] = await pool.query('SELECT id FROM reviews WHERE user_id = ? AND spot_id = ?', [req.user.id, spot_id]);
-      if (existing.length > 0) return res.status(400).json({ error: 'You already reviewed this spot.' });
+      if (existing.length > 0) {
+        console.log('Rejecting: Already reviewed');
+        return res.status(400).json({ error: 'You already reviewed this spot.' });
+      }
     }
     
-    await pool.query('INSERT INTO reviews (user_id, spot_id, rating, text) VALUES (?, ?, ?, ?)', [req.user.id, spot_id || null, rating, text || '']);
-    res.json({ message: 'Review submitted successfully.' });
+    const [result] = await pool.query('INSERT INTO reviews (user_id, spot_id, rating, text) VALUES (?, ?, ?, ?)', [req.user.id, spot_id || null, rating, text || '']);
+    console.log('Review saved with ID:', result.insertId);
+    res.json({ message: 'Review submitted successfully.', reviewId: result.insertId });
   } catch (err) {
     console.error('Submit review error:', err);
     res.status(500).json({ error: 'Failed to submit review.' });
