@@ -50,10 +50,16 @@ router.post('/reviews', authenticateToken, async (req, res) => {
     if (spot_id) {
       const [existing] = await pool.query('SELECT id FROM reviews WHERE user_id = ? AND spot_id = ?', [req.user.id, spot_id]);
       if (existing.length > 0) return res.status(400).json({ error: 'You already reviewed this spot.' });
+      
+      const [bookings] = await pool.query('SELECT id FROM bookings WHERE user_id = ? AND spot_id = ? AND status = "confirmed"', [req.user.id, spot_id]);
+      if (bookings.length === 0) return res.status(403).json({ error: 'You can only review a spot after having a confirmed booking for it.' });
     }
     await pool.query('INSERT INTO reviews (user_id, spot_id, rating, text) VALUES (?, ?, ?, ?)', [req.user.id, spot_id || null, rating, text || '']);
     res.json({ message: 'Review submitted successfully.' });
-  } catch (err) { res.status(500).json({ error: 'Failed to submit review.' }); }
+  } catch (err) {
+    console.error('Submit review error:', err);
+    res.status(500).json({ error: 'Failed to submit review.' });
+  }
 });
 
 router.put('/reviews/:id', authenticateToken, async (req, res) => {
@@ -97,12 +103,12 @@ router.get('/bookings', authenticateToken, async (req, res) => {
 
 router.post('/bookings', authenticateToken, async (req, res) => {
   try {
-    const { type, target_name, price, booking_date } = req.body;
+    const { type, target_name, price, booking_date, spot_id } = req.body;
     if (!type || !target_name) return res.status(400).json({ error: 'Type and target name are required.' });
     
     await pool.query(
-      'INSERT INTO bookings (user_id, type, target_name, price, booking_date) VALUES (?, ?, ?, ?, ?)',
-      [req.user.id, type, target_name, price || 0, booking_date || null]
+      'INSERT INTO bookings (user_id, spot_id, type, target_name, price, booking_date) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.user.id, spot_id || null, type, target_name, price || 0, booking_date || null]
     );
     res.json({ message: 'Booking confirmed successfully!' });
   } catch (err) { 

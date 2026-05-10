@@ -522,7 +522,7 @@ function displayPopularGrid(filteredSpots) {
           <span class="spot-category">${spot.category}</span>
           <span class="spot-budget">${profile.budget === 'high' ? 'High Budget' : 'Low Budget'}</span>
         </div>
-        <button class="save-btn-mini" onclick="event.stopPropagation(); saveSpot(${spot.id})" title="Save to Dashboard" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.9); border:none; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#ff4757; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.1);"><i class="far fa-heart"></i></button>
+        <button class="save-btn-mini" onclick="event.stopPropagation(); saveSpot(${spot.id})" title="Save to Dashboard" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.95); border:none; padding:6px 10px; border-radius:20px; display:flex; align-items:center; gap:5px; color:#ff4757; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.15); font-weight:600; font-size:12px;"><i class="far fa-heart"></i> Save</button>
       </div>
     `;
     card.style.cursor = 'pointer';
@@ -1171,7 +1171,8 @@ async function bookHotel(hotelName, totalPrice, checkin, checkout) {
         type: 'hotel',
         target_name: hotelName,
         price: totalPrice,
-        booking_date: checkin
+        booking_date: checkin,
+        spot_id: currentSelectedSpot ? currentSelectedSpot.id : null
       })
     });
     const data = await res.json();
@@ -1241,7 +1242,8 @@ async function hireGuide(guideName, price) {
         type: 'guide',
         target_name: guideName,
         price: price,
-        booking_date: new Date().toISOString().split('T')[0]
+        booking_date: new Date().toISOString().split('T')[0],
+        spot_id: currentSelectedSpot ? currentSelectedSpot.id : null
       })
     });
     const data = await res.json();

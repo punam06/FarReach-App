@@ -94,14 +94,21 @@ async function initializeDatabase() {
     await connection.query(`CREATE TABLE IF NOT EXISTS bookings (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
+      spot_id INT,
       type ENUM('hotel', 'guide', 'package') NOT NULL,
       target_name VARCHAR(255) NOT NULL,
       price INT DEFAULT 0,
       booking_date DATE,
       status ENUM('pending', 'confirmed', 'cancelled') DEFAULT 'confirmed',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (spot_id) REFERENCES spots(id) ON DELETE SET NULL
     )`);
+
+    try {
+      await connection.query('ALTER TABLE bookings ADD COLUMN spot_id INT');
+      await connection.query('ALTER TABLE bookings ADD CONSTRAINT fk_booking_spot FOREIGN KEY (spot_id) REFERENCES spots(id) ON DELETE SET NULL');
+    } catch (e) {}
 
     await connection.query(`CREATE TABLE IF NOT EXISTS guides (
       id INT AUTO_INCREMENT PRIMARY KEY,
