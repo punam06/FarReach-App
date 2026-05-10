@@ -36,10 +36,10 @@ router.get('/health', async (req, res) => {
 router.get('/spots', async (req, res) => {
   try {
     const [spots] = await pool.query(`
-      SELECT s.*, d.name as district_name, div.name as division_name 
+      SELECT s.*, d.name as district_name, dv.name as division_name 
       FROM spots s 
       LEFT JOIN districts d ON s.district_id = d.id 
-      LEFT JOIN divisions div ON s.division_id = div.id 
+      LEFT JOIN divisions dv ON s.division_id = dv.id 
       ORDER BY s.created_at DESC
     `);
     res.json({ spots });

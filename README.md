@@ -111,9 +111,37 @@ GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 
 ---
 
-## 👤 Usage Guide
+## 🛠 Project Structure
 
-1. **Exploring:** When you land on the homepage, you can instantly search for districts or tourist spots without logging in. Click on any destination to load the interactive "Destination Details" panel.
-2. **Registering:** Click "Sign Up" in the top navigation bar. Enter your details, receive an OTP via email, and verify your account.
-3. **User Capabilities:** Once logged in, you can save spots, write reviews, and access your personal User Dashboard.
-4. **Admin Capabilities:** If registered with an authorized admin email, you will automatically be directed to the Admin Dashboard upon logging in, where you can manage the application's content database.
+- `index.html`: The main landing page of the application.
+- `script.js`: Core frontend logic, including dynamic spot rendering, filtering, and tab management.
+- `styles.css`: Main stylesheet for the platform.
+- `dashboard.css`: Unified styling for both Admin and User dashboards.
+- `login.html` & `register.html`: Secure authentication pages with OTP support.
+- `user-dashboard.html`: Personalized panel for travelers.
+- `admin-dashboard.html`: Management interface for platform administrators.
+- `server/`: Backend Node.js application.
+  - `index.js`: Main entry point for the API server.
+  - `config/`: Database and schema configurations.
+  - `middleware/`: Authentication and role-based access control guards.
+  - `routes/`: Modularized API endpoints (Auth, Admin, Public, Spots, User).
+
+## 🔑 Default Admin Credentials
+
+For testing and management purposes, the following administrative accounts are initialized in the database:
+- **Email:** `punam.papri@gmail.com`
+- **Email:** `rebekasultanaorce455@gmail.com`
+- **Password:** `admin123`
+
+---
+
+## 👤 Handover Notes
+
+1. **Database Consistency:** All queries have been optimized to handle MySQL reserved keywords (like `div`) and support nullable spot associations for general reviews.
+2. **Dynamic Content:** The homepage and dashboards are fully synchronized with the MySQL database.
+3. **Production Readiness:** The demo login system has been completely removed in favor of a secure, OTP-verified authentication flow.
+4. **Spot Visibility:** The homepage now displays up to 20 tourist spots by default, ensuring a rich initial experience for all users.
+
+---
+
+*This project was developed for the SDP (Software Development Project) Lab.*

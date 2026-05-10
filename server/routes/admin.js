@@ -30,9 +30,9 @@ router.get('/stats', async (req, res) => {
 router.get('/spots', async (req, res) => {
   try {
     const [spots] = await pool.query(
-      `SELECT s.*, d.name as district_name, div.name as division_name
+      `SELECT s.*, d.name as district_name, dv.name as division_name
        FROM spots s LEFT JOIN districts d ON s.district_id = d.id
-       LEFT JOIN divisions div ON s.division_id = div.id ORDER BY s.created_at DESC`
+       LEFT JOIN divisions dv ON s.division_id = dv.id ORDER BY s.created_at DESC`
     );
     res.json({ spots });
   } catch (err) { res.status(500).json({ error: 'Failed to fetch spots.' }); }
@@ -104,7 +104,7 @@ router.delete('/divisions/:id', async (req, res) => {
 router.get('/districts', async (req, res) => {
   try {
     const [districts] = await pool.query(
-      'SELECT d.*, div.name as division_name FROM districts d JOIN divisions div ON d.division_id = div.id ORDER BY div.name, d.name'
+      'SELECT d.*, dv.name as division_name FROM districts d JOIN divisions dv ON d.division_id = dv.id ORDER BY dv.name, d.name'
     );
     res.json({ districts });
   } catch (err) { res.status(500).json({ error: 'Failed to fetch districts.' }); }

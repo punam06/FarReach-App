@@ -68,11 +68,11 @@ function buildBudgetEstimate(spot, inputs) {
 router.get('/', async (req, res) => {
   try {
     const [spots] = await pool.query(
-      `SELECT s.*, d.name as district_name, div.name as division_name,
+      `SELECT s.*, d.name as district_name, dv.name as division_name,
        (SELECT AVG(rating) FROM reviews WHERE spot_id = s.id) as avg_rating,
        (SELECT COUNT(*) FROM reviews WHERE spot_id = s.id) as review_count
        FROM spots s LEFT JOIN districts d ON s.district_id = d.id
-       LEFT JOIN divisions div ON s.division_id = div.id ORDER BY s.name`
+       LEFT JOIN divisions dv ON s.division_id = dv.id ORDER BY s.name`
     );
     res.json({ spots });
   } catch (err) {
@@ -88,10 +88,10 @@ router.get('/', async (req, res) => {
 router.post('/:id/budget-estimate', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT s.*, d.name as district_name, div.name as division_name,
+      `SELECT s.*, d.name as district_name, dv.name as division_name,
        (SELECT MIN(price) FROM guides WHERE spot_id = s.id) as guide_price
        FROM spots s LEFT JOIN districts d ON s.district_id = d.id
-       LEFT JOIN divisions div ON s.division_id = div.id WHERE s.id = ?`,
+       LEFT JOIN divisions dv ON s.division_id = dv.id WHERE s.id = ?`,
       [req.params.id]
     );
 
@@ -115,7 +115,7 @@ router.get('/meta/divisions', async (req, res) => {
 
 router.get('/meta/districts', async (req, res) => {
   try {
-    const [districts] = await pool.query('SELECT d.*, div.name as division_name FROM districts d JOIN divisions div ON d.division_id = div.id ORDER BY div.name, d.name');
+    const [districts] = await pool.query('SELECT d.*, dv.name as division_name FROM districts d JOIN divisions dv ON d.division_id = dv.id ORDER BY dv.name, d.name');
     res.json({ districts });
   } catch (err) { res.status(500).json({ error: 'Failed to fetch districts.' }); }
 });
@@ -139,7 +139,7 @@ router.get('/division/:divisionId', async (req, res) => {
 router.get('/district/:districtId', async (req, res) => {
   try {
     const [spots] = await pool.query(
-      `SELECT s.*, div.name as division_name FROM spots s LEFT JOIN divisions div ON s.division_id = div.id WHERE s.district_id = ? ORDER BY s.name`, [req.params.districtId]
+      `SELECT s.*, dv.name as division_name FROM spots s LEFT JOIN divisions dv ON s.division_id = dv.id WHERE s.district_id = ? ORDER BY s.name`, [req.params.districtId]
     );
     res.json({ spots });
   } catch (err) {
@@ -155,11 +155,11 @@ router.get('/district/:districtId', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const [spots] = await pool.query(
-      `SELECT s.*, d.name as district_name, div.name as division_name,
+      `SELECT s.*, d.name as district_name, dv.name as division_name,
        (SELECT AVG(rating) FROM reviews WHERE spot_id = s.id) as avg_rating,
        (SELECT COUNT(*) FROM reviews WHERE spot_id = s.id) as review_count
        FROM spots s LEFT JOIN districts d ON s.district_id = d.id
-       LEFT JOIN divisions div ON s.division_id = div.id WHERE s.id = ?`, [req.params.id]
+       LEFT JOIN divisions dv ON s.division_id = dv.id WHERE s.id = ?`, [req.params.id]
     );
     if (spots.length === 0) return res.status(404).json({ error: 'Spot not found.' });
     const [reviews] = await pool.query(

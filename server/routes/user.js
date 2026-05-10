@@ -6,10 +6,10 @@ const router = express.Router();
 router.get('/saved-spots', authenticateToken, async (req, res) => {
   try {
     const [spots] = await pool.query(
-      `SELECT s.*, d.name as district_name, div.name as division_name, ss.created_at as saved_at
+      `SELECT s.*, d.name as district_name, dv.name as division_name, ss.created_at as saved_at
        FROM saved_spots ss JOIN spots s ON ss.spot_id = s.id
        LEFT JOIN districts d ON s.district_id = d.id
-       LEFT JOIN divisions div ON s.division_id = div.id
+       LEFT JOIN divisions dv ON s.division_id = dv.id
        WHERE ss.user_id = ? ORDER BY ss.created_at DESC`, [req.user.id]
     );
     res.json({ spots });
@@ -121,10 +121,10 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
        WHERE r.user_id = ? ORDER BY r.created_at DESC LIMIT 5`, [req.user.id]
     );
     const [recentSaved] = await pool.query(
-      `SELECT s.*, d.name as district_name, div.name as division_name
+      `SELECT s.*, d.name as district_name, dv.name as division_name
        FROM saved_spots ss JOIN spots s ON ss.spot_id = s.id
        LEFT JOIN districts d ON s.district_id = d.id
-       LEFT JOIN divisions div ON s.division_id = div.id
+       LEFT JOIN divisions dv ON s.division_id = dv.id
        WHERE ss.user_id = ? ORDER BY ss.created_at DESC LIMIT 5`, [req.user.id]
     );
     res.json({ savedCount: savedCount[0].count, reviewCount: reviewCount[0].count, recentReviews, recentSaved });

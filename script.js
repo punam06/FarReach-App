@@ -505,7 +505,7 @@ function displayPopularGrid(filteredSpots) {
   
   grid.innerHTML = '';
   
-  filteredSpots.slice(0, 12).forEach(spot => {
+  filteredSpots.slice(0, 20).forEach(spot => {
     const profile = getSpotFilterProfile(spot);
     const card = document.createElement('article');
     card.className = 'spot-card';
@@ -1301,170 +1301,15 @@ function logout() {
   checkLogin();
 }
 
-function showLoginModal() {
-  document.getElementById('loginModal').style.display = 'block';
-}
-function closeLoginModal() {
-  document.getElementById('loginModal').style.display = 'none';
-}
-
-let tempSignupEmail = '';
-let tempVerificationToken = '';
-
-function showSignupModal() {
-  const modal = document.getElementById('signupModal');
-  if (modal) modal.style.display = 'block';
-  const err = document.getElementById('signupError');
-  if (err) err.style.display = 'none';
-}
-function closeSignupModal() {
-  const modal = document.getElementById('signupModal');
-  if (modal) modal.style.display = 'none';
-}
-
-function showOtpModal() {
-  const modal = document.getElementById('otpModal');
-  if (modal) modal.style.display = 'block';
-  const err = document.getElementById('otpError');
-  if (err) err.style.display = 'none';
-}
-function closeOtpModal() {
-  const modal = document.getElementById('otpModal');
-  if (modal) modal.style.display = 'none';
-}
-
-async function signup() {
-  const name = document.getElementById('signupName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim();
-  const password = document.getElementById('signupPassword').value;
-  const errEl = document.getElementById('signupError');
-
-  if (!name || !email || !password) {
-    errEl.textContent = 'Please fill all fields';
-    errEl.style.display = 'block';
-    return;
-  }
-  
-  try {
-    errEl.style.display = 'none';
-    const res = await fetch(`${API_BASE}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      tempSignupEmail = data.email;
-      tempVerificationToken = data.verificationToken;
-      closeSignupModal();
-      showOtpModal();
-    } else {
-      errEl.textContent = data.error || 'Signup failed';
-      errEl.style.display = 'block';
-    }
-  } catch (err) {
-    errEl.textContent = 'Connection error. Make sure server is running.';
-    errEl.style.display = 'block';
-  }
-}
-
-async function verifyOtp() {
-  const otp = document.getElementById('otpInput').value.trim();
-  const errEl = document.getElementById('otpError');
-  if (!otp) {
-    errEl.textContent = 'Enter OTP';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  try {
-    errEl.style.display = 'none';
-    const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${tempVerificationToken}`
-      },
-      body: JSON.stringify({ otp })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userEmail', tempSignupEmail);
-      if (data.token) localStorage.setItem('token', data.token);
-      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
-      closeOtpModal();
-      checkLogin();
-      alert('Signup and verification successful!');
-    } else {
-      errEl.textContent = data.error || 'Verification failed';
-      errEl.style.display = 'block';
-    }
-  } catch (err) {
-    errEl.textContent = 'Connection error.';
-    errEl.style.display = 'block';
-  }
-}
-
-async function resendOtp() {
-  const errEl = document.getElementById('otpError');
-  try {
-    errEl.style.display = 'none';
-    const res = await fetch(`${API_BASE}/api/auth/resend-otp`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${tempVerificationToken}` }
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert('OTP resent successfully to ' + tempSignupEmail);
-    } else {
-      errEl.textContent = data.error || 'Failed to resend';
-      errEl.style.display = 'block';
-    }
-  } catch (err) {
-    errEl.textContent = 'Connection error.';
-    errEl.style.display = 'block';
-  }
-}
-
-async function login() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  if (!email || !password) {
-    alert('Please enter email and password');
-    return;
-  }
-  
-  try {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      closeLoginModal();
-      checkLogin();
-    } else if (data.verification_required) {
-      alert('Your email is not verified yet. An OTP has been sent.');
-      tempSignupEmail = email;
-      tempVerificationToken = data.verificationToken;
-      closeLoginModal();
-      showOtpModal();
-    } else {
-      alert(data.error || 'Login failed');
-    }
-  } catch (err) {
-    alert('Connection error. Is the server running?');
-  }
-}
-
 function logoutUser() {
-  logout();
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('isLoggedIn');
+  checkLogin();
+  window.location.reload();
 }
+
+
 
 // ===== STAR RATING =====
 let selectedRating = 0;
