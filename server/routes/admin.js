@@ -196,13 +196,14 @@ router.get('/users', async (req, res) => {
 router.get('/reviews', async (req, res) => {
   try {
     const [reviews] = await pool.query(
-      `SELECT r.*, u.name as user_name, s.name as spot_name 
+      `SELECT r.*, u.name as user_name, u.email as user_email, s.name as spot_name 
        FROM reviews r 
        LEFT JOIN users u ON r.user_id = u.id 
        LEFT JOIN spots s ON r.spot_id = s.id 
        ORDER BY r.created_at DESC`
     );
-    console.log('Admin: Fetched', reviews.length, 'reviews');
+    console.log('Admin: Returning', reviews.length, 'reviews');
+    if (reviews.length > 0) console.log('Sample review data:', JSON.stringify(reviews[0]));
     res.json({ reviews });
   } catch (err) {
     console.error('Admin reviews error:', err);

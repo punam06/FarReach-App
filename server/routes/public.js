@@ -51,13 +51,14 @@ router.get('/spots', async (req, res) => {
 router.get('/reviews/public', async (req, res) => {
   try {
     const [reviews] = await pool.query(`
-      SELECT r.id, r.spot_id, r.rating, r.text, r.created_at, u.name as user_name
+      SELECT r.id, r.spot_id, r.rating, r.text, r.created_at, u.name as user_name, u.email as user_email
       FROM reviews r
-      JOIN users u ON r.user_id = u.id
+      LEFT JOIN users u ON r.user_id = u.id
       ORDER BY r.created_at DESC
     `);
     res.json({ reviews });
   } catch (err) {
+    console.error('Public reviews error:', err);
     res.status(500).json({ error: 'Failed to fetch reviews' });
   }
 });
