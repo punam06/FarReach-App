@@ -644,6 +644,7 @@ function renderBudgetResult(result) {
     <div class="budget-breakdown">
       <div><strong>Travel tickets</strong><span>৳${result.breakdown.tripTickets.toLocaleString()}</span></div>
       <div><strong>Hotel booking</strong><span>৳${result.breakdown.hotelBooking.toLocaleString()}</span></div>
+      <div><strong>Food & Misc</strong><span>৳${result.breakdown.foodTotal.toLocaleString()}</span></div>
       <div><strong>Guide booking</strong><span>৳${result.breakdown.guideBooking.toLocaleString()}</span></div>
       <div><strong>Local activities</strong><span>৳${result.breakdown.localActivity.toLocaleString()}</span></div>
       <div><strong>Contingency</strong><span>৳${result.breakdown.contingency.toLocaleString()}</span></div>

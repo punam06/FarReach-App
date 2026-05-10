@@ -120,38 +120,74 @@ router.post('/hotels/search', async (req, res) => {
     if (!city) return res.status(400).json({ error: 'city is required' });
     if (!checkin || !checkout) return res.status(400).json({ error: 'check-in and check-out dates are required' });
 
-    const nights = Math.max(1, Math.ceil((new Date(checkout) - new Date(checkin)) / (1000 * 60 * 60 * 24)));
-    const basePrice = ((people || 2) * 1500) + (((hotelType || '').includes('Luxury') || (hotelType || '').includes('Boutique')) ? 3000 : 1000);
+    const checkinDate = new Date(checkin);
+    const checkoutDate = new Date(checkout);
+    const nights = Math.max(1, Math.ceil((checkoutDate - checkinDate) / (1000 * 60 * 60 * 24)));
+    
+    // Seasonal multiplier (High season: Dec-Feb, Mid: Oct-Nov, Mar)
+    const month = checkinDate.getMonth();
+    let seasonalMult = 1.0;
+    if (month >= 11 || month <= 1) seasonalMult = 1.5; // Peak Winter
+    else if (month === 9 || month === 10 || month === 2) seasonalMult = 1.2;
+
+    // City-based base rates (Dhaka, Cox's Bazar, Sylhet are more expensive)
+    const cityRates = {
+      'Dhaka': 2500,
+      "Cox's Bazar": 3000,
+      'Sylhet': 2200,
+      'Chittagong': 2000,
+      'Khulna': 1800
+    };
+    const cityBase = cityRates[city] || 1500;
+    
+    // People factor
+    const peopleFactor = Math.max(1, Math.ceil(people / 2)); // Assume 2 per room
+
+    // Type multiplier
+    const typeMult = (hotelType?.includes('Luxury')) ? 2.5 : (hotelType?.includes('Boutique') ? 1.8 : 1.0);
+
+    const basePrice = Math.round(cityBase * peopleFactor * typeMult * seasonalMult);
     const vatRate = 0.15;
     const serviceRate = 0.10;
 
     const hotels = [
       {
-        name: `${hotelType || 'Hotel'} ${city}`,
+        name: `${hotelType || 'Standard'} ${city} Central`,
         type: hotelType || 'Standard',
         rating: 4.5,
-        features: features ? features.split(',').map((f) => f.trim()) : ['WiFi', 'AC'],
+        features: features ? features.split(',').map((f) => f.trim()) : ['WiFi', 'AC', 'Room Service'],
         pricePerNight: basePrice,
-        hasCorporateRate: Math.random() > 0.5,
-        hasBankDiscount: Math.random() > 0.7,
+        hasCorporateRate: Math.random() > 0.4,
+        hasBankDiscount: Math.random() > 0.6,
         portals: [
           { name: 'Booking.com', url: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(`${city}, Bangladesh`)}` },
-          { name: 'Hotel.com.bd', url: 'https://hotel.com.bd' },
-          { name: 'Carefly', url: 'https://careflybd.com/hotel-booking/' },
-          { name: 'Parjatan (Official)', url: 'https://hotels.gov.bd' }
+          { name: 'GoZayan', url: 'https://gozayan.com' },
+          { name: 'Hotel.com.bd', url: 'https://hotel.com.bd' }
         ]
       },
       {
-        name: `Grand ${city} Resort`,
-        type: hotelType || 'Resort',
-        rating: 4.2,
-        features: ['WiFi', 'Pool', 'Restaurant', ...(features ? features.split(',').map((f) => f.trim()) : [])],
-        pricePerNight: Math.round(basePrice * 1.3),
+        name: `Royal ${city} Palace`,
+        type: 'Luxury Resort',
+        rating: 4.8,
+        features: ['Pool', 'Spa', 'Gym', 'Breakfast Included', ...(features ? features.split(',').map((f) => f.trim()) : [])],
+        pricePerNight: Math.round(basePrice * 1.6),
         hasCorporateRate: true,
-        hasBankDiscount: false,
+        hasBankDiscount: true,
         portals: [
           { name: 'Booking.com', url: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(`${city}, Bangladesh`)}` },
-          { name: 'Hotel.com.bd', url: 'https://hotel.com.bd' }
+          { name: 'ShareTrip', url: 'https://sharetrip.net' }
+        ]
+      },
+      {
+        name: `${city} Comfort Inn`,
+        type: 'Budget',
+        rating: 3.9,
+        features: ['WiFi', 'AC', '24/7 Security'],
+        pricePerNight: Math.round(basePrice * 0.6),
+        hasCorporateRate: false,
+        hasBankDiscount: false,
+        portals: [
+          { name: 'Booking.com', url: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(`${city}, Bangladesh`)}` }
         ]
       }
     ];

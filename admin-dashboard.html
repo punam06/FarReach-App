@@ -97,7 +97,7 @@
       <div class="modal-header"><h3 id="spot-modal-title"><i class="fas fa-map-marker-alt"></i> Add Spot</h3><button class="modal-close" onclick="closeModal('spot-modal')">&times;</button></div>
       <div class="modal-body">
         <input type="hidden" id="spot-id">
-        <form id="spot-form" enctype="multipart/form-data">
+        <form id="spot-form" onsubmit="event.preventDefault()">
           <div class="form-grid">
             <div class="form-group"><label><i class="fas fa-tag"></i> Name</label><input type="text" class="form-control" id="spot-name" required></div>
             <div class="form-group"><label><i class="fas fa-layer-group"></i> Division</label><select class="form-control" id="spot-division"><option value="">Select Division</option></select></div>
@@ -156,7 +156,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const API = 'http://localhost:3000/api';
+    const API = window.location.origin + '/api';
     let currentUser = null, allDivisions = [], allDistricts = [], allSpots = [];
 
     function checkAuth() {
@@ -255,13 +255,13 @@
         var distRes = await fetch(API + '/admin/districts', { headers: getHeaders() });
         var divData = await divRes.json();
         var distData = await distRes.json();
-        allDivisions = divData.divisions;
-        allDistricts = distData.districts;
+        allDivisions = divData.divisions || [];
+        allDistricts = distData.districts || [];
         var divSel = document.getElementById('spot-division');
         divSel.innerHTML = '<option value="">Select Division</option>' + allDivisions.map(function(d) { return '<option value="' + d.id + '">' + d.name + '</option>'; }).join('');
         updateDistrictSelect();
         divSel.onchange = updateDistrictSelect;
-      } catch (e) {}
+      } catch (e) { console.error('Error loading selects', e); }
     }
 
     function updateDistrictSelect() {
@@ -273,23 +273,36 @@
 
     async function saveSpot() {
       var id = document.getElementById('spot-id').value;
+      var name = document.getElementById('spot-name').value;
+      if (!name) { showToast('Spot name is required', 'error'); return; }
+
       var formData = new FormData();
-      formData.append('name', document.getElementById('spot-name').value);
+      formData.append('name', name);
       formData.append('division_id', document.getElementById('spot-division').value);
       formData.append('district_id', document.getElementById('spot-district').value);
       formData.append('budget_category', document.getElementById('spot-budget').value);
       formData.append('category', document.getElementById('spot-category').value);
       formData.append('description', document.getElementById('spot-description').value);
       formData.append('history', document.getElementById('spot-history').value);
+      
       var fileInput = document.getElementById('spot-image');
       if (fileInput.files[0]) formData.append('image', fileInput.files[0]);
+
       try {
         var url = id ? API + '/admin/spots/' + id : API + '/admin/spots';
         var method = id ? 'PUT' : 'POST';
         var res = await fetch(url, { method: method, headers: getHeaders(), body: formData });
-        if (res.ok) { showToast(id ? 'Spot updated!' : 'Spot created!', 'success'); closeModal('spot-modal'); loadSpots(); }
-        else { var data = await res.json(); showToast(data.error || 'Failed', 'error'); }
-      } catch (e) { showToast('Error saving spot', 'error'); }
+        var data = await res.json().catch(() => ({}));
+        if (res.ok) { 
+          showToast(id ? 'Spot updated!' : 'Spot created!', 'success'); 
+          closeModal('spot-modal'); 
+          loadSpots(); 
+        } else { 
+          showToast(data.error || 'Failed to save spot', 'error'); 
+        }
+      } catch (e) { 
+        showToast('Connection error', 'error'); 
+      }
     }
 
     async function deleteSpot(id) {
@@ -389,8 +402,11 @@
       try {
         var res = await fetch(API + '/admin/spots', { headers: getHeaders() });
         var data = await res.json();
-        document.getElementById('guide-spot').innerHTML = '<option value="">Select Spot</option>' + data.spots.map(function(s) { return '<option value="' + s.id + '">' + s.name + '</option>'; }).join('');
-      } catch (e) {}
+        var spotSel = document.getElementById('guide-spot');
+        if (spotSel && data.spots) {
+          spotSel.innerHTML = '<option value="">Select Spot</option>' + data.spots.map(function(s) { return '<option value="' + s.id + '">' + s.name + '</option>'; }).join('');
+        }
+      } catch (e) { console.error('Error loading spots for guide', e); }
       if (id) {
         try {
           var res2 = await fetch(API + '/admin/guides', { headers: getHeaders() });

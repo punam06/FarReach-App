@@ -3,10 +3,23 @@ const pool = require('../config/database');
 const router = express.Router();
 
 const budgetRates = {
-  transport: { bus: 900, train: 1200, launch: 750, air: 6500 },
-  hotel: { budget: 1800, standard: 3500, premium: 7000 },
-  guide: { budget: 2800, standard: 4200, premium: 6500 },
-  activity: { leisure: 1200, culture: 1000, adventure: 1800, eco: 1100, wildlife: 1500, family: 900 }
+  transport: { bus: 900, train: 1200, launch: 850, air: 6500 },
+  hotel: { budget: 1500, standard: 3500, premium: 8500 },
+  guide: { budget: 2000, standard: 3500, premium: 6000 },
+  food: { budget: 600, standard: 1200, premium: 2500 },
+  activity: { leisure: 1200, culture: 1000, adventure: 2000, eco: 1100, wildlife: 1800, family: 900 }
+};
+
+// Simulated distance-based multiplier from Dhaka (Central)
+const divisionDistanceMultiplier = {
+  'Dhaka': 0.5,
+  'Chattogram': 1.8,
+  'Sylhet': 1.4,
+  'Rajshahi': 1.5,
+  'Khulna': 1.6,
+  'Barishal': 1.5,
+  'Rangpur': 2.0,
+  'Mymensingh': 0.8
 };
 
 function getBudgetClass(spot) {
@@ -29,22 +42,37 @@ function getOpportunityByCategory(category) {
 function buildBudgetEstimate(spot, inputs) {
   const travelers = Math.max(1, Number(inputs.travelers) || 1);
   const nights = Math.max(1, Number(inputs.nights) || 1);
+  const days = nights + 1;
   const guideDays = Math.max(0, Number(inputs.guideDays) || 0);
   const transportMode = inputs.transportMode || 'bus';
   const hotelTier = inputs.hotelTier || 'standard';
   const budgetClass = getBudgetClass(spot);
   const opportunity = getOpportunityByCategory(spot.category);
 
-  const transportRate = budgetRates.transport[transportMode] || budgetRates.transport.bus;
-  const hotelRate = budgetRates.hotel[hotelTier] || budgetRates.hotel.standard;
-  const guideRate = Number(spot.guide_price) > 0 ? Number(spot.guide_price) : budgetRates.guide[hotelTier] || budgetRates.guide.standard;
-  const activityRate = budgetRates.activity[opportunity] || budgetRates.activity.leisure;
+  // Transport calculation with distance multiplier
+  const baseTransportRate = budgetRates.transport[transportMode] || budgetRates.transport.bus;
+  const distMult = divisionDistanceMultiplier[spot.division_name] || 1.2;
+  const tripTickets = Math.round(baseTransportRate * travelers * distMult * (budgetClass === 'high' ? 1.3 : 1));
 
-  const tripTickets = Math.round(transportRate * travelers * (budgetClass === 'high' ? 1.2 : 1));
-  const hotelBooking = Math.round(hotelRate * nights * travelers * (budgetClass === 'high' ? 1.15 : 1));
+  // Hotel calculation with category multiplier (e.g. Beaches are 30% more expensive)
+  const baseHotelRate = budgetRates.hotel[hotelTier] || budgetRates.hotel.standard;
+  const categoryHotelMult = (spot.category === 'Beach' || spot.category === 'Island') ? 1.3 : 1.0;
+  const hotelBooking = Math.round(baseHotelRate * nights * Math.ceil(travelers / 2) * categoryHotelMult);
+
+  // Food and Misc
+  const foodRate = budgetRates.food[hotelTier] || budgetRates.food.standard;
+  const foodTotal = foodRate * travelers * days;
+
+  // Guide
+  const guideRate = Number(spot.guide_price) > 0 ? Number(spot.guide_price) : budgetRates.guide[hotelTier] || budgetRates.guide.standard;
   const guideBooking = Math.round(guideRate * guideDays);
-  const localActivity = Math.round(activityRate * travelers);
-  const contingency = Math.round((tripTickets + hotelBooking + guideBooking + localActivity) * 0.1);
+
+  // Activities
+  const activityRate = budgetRates.activity[opportunity] || budgetRates.activity.leisure;
+  const localActivity = Math.round(activityRate * travelers * days * 0.5); // 0.5 frequency
+
+  const subtotal = tripTickets + hotelBooking + guideBooking + foodTotal + localActivity;
+  const contingency = Math.round(subtotal * 0.12);
 
   return {
     spot: spot.name,
@@ -57,11 +85,12 @@ function buildBudgetEstimate(spot, inputs) {
     breakdown: {
       tripTickets,
       hotelBooking,
+      foodTotal,
       guideBooking,
       localActivity,
       contingency
     },
-    total: tripTickets + hotelBooking + guideBooking + localActivity + contingency
+    total: subtotal + contingency
   };
 }
 

@@ -47,7 +47,10 @@ router.post('/spots', upload.single('image'), async (req, res) => {
       [name, district_id || null, division_id || null, category || 'General', description || '', history || '', image, budget_category || 'Low']
     );
     res.json({ message: 'Spot created.', id: result.insertId });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Failed to create spot.' }); }
+  } catch (err) { 
+    console.error('Error creating spot:', err);
+    res.status(500).json({ error: 'Failed to create spot: ' + err.message }); 
+  }
 });
 
 router.put('/spots/:id', upload.single('image'), async (req, res) => {
@@ -60,7 +63,10 @@ router.put('/spots/:id', upload.single('image'), async (req, res) => {
     values.push(req.params.id);
     await pool.query('UPDATE spots SET ' + updates.join(', ') + ' WHERE id = ?', values);
     res.json({ message: 'Spot updated.' });
-  } catch (err) { res.status(500).json({ error: 'Failed to update spot.' }); }
+  } catch (err) { 
+    console.error('Error updating spot:', err);
+    res.status(500).json({ error: 'Failed to update spot: ' + err.message }); 
+  }
 });
 
 router.delete('/spots/:id', async (req, res) => {
@@ -152,7 +158,10 @@ router.post('/guides', async (req, res) => {
       [name, experience || '', rating || 0, languages || '', specialties || '', price || 0, contact || '', spot_id || null]
     );
     res.json({ message: 'Guide added.', id: result.insertId });
-  } catch (err) { res.status(500).json({ error: 'Failed to add guide.' }); }
+  } catch (err) { 
+    console.error('Error adding guide:', err);
+    res.status(500).json({ error: 'Failed to add guide: ' + err.message }); 
+  }
 });
 
 router.put('/guides/:id', async (req, res) => {
