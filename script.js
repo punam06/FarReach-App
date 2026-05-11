@@ -1176,7 +1176,7 @@ async function bookHotel(hotelName, totalPrice, checkin, checkout) {
 
   if (!user.phone || !user.address) {
     alert("Please complete your profile (add Phone and Address) before making a booking.");
-    window.location.href = 'user-dashboard.html#profile';
+    window.location.href = '/user-dashboard#profile';
     return;
   }
 
@@ -1247,7 +1247,7 @@ async function hireGuide(guideName, price) {
 
   if (!user.phone || !user.address) {
     alert("Please complete your profile (add Phone and Address) before hiring a guide.");
-    window.location.href = 'user-dashboard.html#profile';
+    window.location.href = '/user-dashboard#profile';
     return;
   }
 
@@ -1344,10 +1344,10 @@ function checkLogin() {
     if (dashboardLink) {
       dashboardLink.style.display = 'inline-block';
       if (user.role === 'admin') {
-        dashboardLink.href = 'admin-dashboard.html';
+        dashboardLink.href = '/admin-dashboard';
         dashboardLink.innerHTML = '<i class="fas fa-tachometer-alt"></i> Admin Panel';
       } else {
-        dashboardLink.href = 'user-dashboard.html';
+        dashboardLink.href = '/user-dashboard';
         dashboardLink.innerHTML = '<i class="fas fa-tachometer-alt"></i> Dashboard';
       }
     }
@@ -1593,7 +1593,7 @@ async function saveSpot(spotId) {
   const token = localStorage.getItem('token');
   if (!token) {
     alert('Please login to save spots to your dashboard.');
-    window.location.href = 'login.html';
+    window.location.href = '/login';
     return;
   }
 
