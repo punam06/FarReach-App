@@ -107,13 +107,13 @@
     let currentUser = null, editRating = 0;
     function checkAuth() {
       const token = localStorage.getItem('token'), user = localStorage.getItem('user');
-      if (!token || !user) { window.location.href = 'login.html'; return false; }
+      if (!token || !user) { window.location.href = '/login'; return false; }
       currentUser = JSON.parse(user);
-      if (currentUser.role === 'admin') { window.location.href = 'admin-dashboard.html'; return false; }
+      if (currentUser.role === 'admin') { window.location.href = '/admin-dashboard'; return false; }
       return true;
     }
     function getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }; }
-    function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = 'login.html'; }
+    function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }
     document.querySelectorAll('.sidebar-link[data-page]').forEach(link => {
       link.addEventListener('click', () => {
         document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));

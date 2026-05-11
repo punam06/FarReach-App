@@ -8,9 +8,31 @@ function normalizeDistrict(district) {
 
 // Mock helpers for development when OpenWeather API key is missing
 function mockWeatherData(district) {
+  const conditions = ['clear sky', 'few clouds', 'scattered clouds', 'overcast clouds', 'light rain'];
+  const mains = ['Clear', 'Clouds', 'Clouds', 'Clouds', 'Rain'];
+  const idx = Math.floor(Math.random() * conditions.length);
+  
   return {
-    weather: [{ description: 'clear sky', icon: '01d' }],
-    main: { temp: 27, feels_like: 27, humidity: 60 },
+    coord: { lon: 90.3563, lat: 23.8103 }, // Default to Dhaka coords
+    weather: [{ 
+      id: 800 + idx, 
+      main: mains[idx], 
+      description: conditions[idx], 
+      icon: `0${idx}d` 
+    }],
+    main: { 
+      temp: 25 + Math.random() * 8, 
+      feels_like: 26 + Math.random() * 7, 
+      temp_min: 22 + Math.random() * 5,
+      temp_max: 28 + Math.random() * 8,
+      pressure: 1010 + Math.random() * 5,
+      humidity: 50 + Math.random() * 30 
+    },
+    visibility: 9000 + Math.random() * 1000,
+    wind: { speed: 2 + Math.random() * 4, deg: Math.random() * 360 },
+    clouds: { all: Math.random() * 100 },
+    dt: Math.floor(Date.now() / 1000),
+    timezone: 21600,
     name: district || 'Unknown',
     sys: { country: 'BD' },
     message: 'OpenWeather API key not configured – using mock weather data.'
@@ -18,12 +40,36 @@ function mockWeatherData(district) {
 }
 
 function mockForecastData(district) {
+  const now = new Date();
+  const list = [];
+  // Generate forecast data for the next 5 days with 3-hour intervals (40 entries total)
+  for (let day = 0; day < 5; day++) {
+    for (let interval = 0; interval < 8; interval++) {
+      const forecastDate = new Date(now.getTime() + (day * 24 + interval * 3) * 3600000);
+      const dtUnix = Math.floor(forecastDate.getTime() / 1000); // Unix timestamp in seconds
+      const isoStr = forecastDate.toISOString();
+      const dt_txt = isoStr.slice(0, 10) + ' ' + isoStr.slice(11, 19); // Format: "YYYY-MM-DD HH:MM:SS"
+      
+      list.push({
+        dt: dtUnix,
+        dt_txt: dt_txt,
+        main: { 
+          temp: 20 + Math.random() * 10, 
+          feels_like: 18 + Math.random() * 12, 
+          humidity: 45 + Math.random() * 35 
+        },
+        weather: [{ 
+          main: 'Clear', 
+          description: 'clear sky', 
+          icon: '01d' 
+        }],
+        wind: { speed: 2 + Math.random() * 5 },
+        pop: Math.random() * 0.4 // Probability of precipitation (0-40%)
+      });
+    }
+  }
   return {
-    list: Array.from({ length: 5 }, (_, i) => ({
-      dt_txt: `${new Date().toISOString().split('T')[0]} 12:00:00`,
-      main: { temp: 27 + i, humidity: 60 },
-      weather: [{ description: 'clear sky', icon: '01d' }]
-    })),
+    list,
     city: { name: district || 'Unknown', country: 'BD' },
     message: 'OpenWeather API key not configured – using mock forecast data.'
   };
@@ -211,7 +257,8 @@ router.post('/hotels/search', async (req, res) => {
 
 router.get('/config', (req, res) => {
   res.json({
-    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyA06LZtXWwqLA9GsLjxYFxD9tF0DijV7AU'
+    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || 'not-configured',
+    openWeatherApiKey: process.env.OPENWEATHER_API_KEY ? 'configured' : 'not-configured'
   });
 });
 

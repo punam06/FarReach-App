@@ -599,7 +599,7 @@ function selectSpot(spot) {
     fetchCurrentWeatherForTab(spot.district);
   }
 
-  loadMap(spot.district, spot.name);
+  loadMap(spot.district, spot.name, spot.latitude, spot.longitude);
   
   const reviewsTab = document.getElementById('reviews-tab');
   if (reviewsTab && reviewsTab.classList.contains('active')) {
@@ -905,7 +905,7 @@ function initializeTabContent(tabName) {
       break;
     case 'map':
       if (currentSelectedSpot) {
-        loadMap(currentSelectedSpot.district, currentSelectedSpot.name);
+        loadMap(currentSelectedSpot.district, currentSelectedSpot.name, currentSelectedSpot.latitude, currentSelectedSpot.longitude);
       } else {
         loadMap(district, '');
       }
@@ -940,36 +940,56 @@ async function fetchAppConfig() {
       return appConfigCache;
     }
   } catch (e) {
-    console.error('Failed to fetch config:', e);
+    console.warn('Failed to fetch config:', e);
   }
-  return { googleMapsApiKey: 'AIzaSyA06LZtXWwqLA9GsLjxYFxD9tF0DijV7AU' };
+  return { googleMapsApiKey: 'not-configured', openWeatherApiKey: 'not-configured' };
 }
 
 // ==== MAP FUNCTION ====
-async function loadMap(district, spotName) {
+async function loadMap(district, spotName, lat, lng) {
   const config = await fetchAppConfig();
-  const GOOGLE_MAPS_API_KEY = config.googleMapsApiKey || 'AIzaSyA06LZtXWwqLA9GsLjxYFxD9tF0DijV7AU';
+  const GOOGLE_MAPS_API_KEY = config.googleMapsApiKey;
   const mapContainer = document.getElementById('mapContainer');
   if (!mapContainer) return;
 
   if (district && district !== '-') {
-    const query = encodeURIComponent(spotName ? spotName + ', ' + district : district + ', Bangladesh');
-    mapContainer.innerHTML = `
-      <iframe
-        class="map-iframe"
-        src="https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_API_KEY}&q=${query}"
-        width="100%"
-        height="400"
-        style="border:0; border-radius:16px;"
-        allowfullscreen
-        loading="lazy"
-        referrerpolicy="no-referrer-when-downgrade">
-      </iframe>
-      <div class="map-info">
-        <p><strong>${spotName || district}</strong> — ${district}, Bangladesh</p>
-        <a href="https://www.google.com/maps?q=${query}" target="_blank" class="map-link">Open in Google Maps ↗</a>
-      </div>
-    `;
+    // If we have valid coordinates, use them as the query
+    let query;
+    if (lat && lng) {
+      query = encodeURIComponent(`${lat},${lng}`);
+    } else {
+      query = encodeURIComponent(spotName ? spotName + ', ' + district : district + ', Bangladesh');
+    }
+    
+    // If we have a valid API key, show the embedded map
+    if (GOOGLE_MAPS_API_KEY && GOOGLE_MAPS_API_KEY !== 'not-configured') {
+      mapContainer.innerHTML = `
+        <iframe
+          class="map-iframe"
+          src="https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_API_KEY}&q=${query}"
+          width="100%"
+          height="400"
+          style="border:0; border-radius:16px;"
+          allowfullscreen
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+        <div class="map-info">
+          <p><strong>${spotName || district}</strong> — ${district}, Bangladesh</p>
+          <a href="https://www.google.com/maps?q=${query}" target="_blank" class="map-link">Open in Google Maps ↗</a>
+        </div>
+      `;
+    } else {
+      // Fallback: Show a placeholder with link to Google Maps
+      mapContainer.innerHTML = `
+        <div class="map-placeholder" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:16px; padding:40px; text-align:center; color:white;">
+          <span class="map-icon" style="font-size:3em; display:block; margin-bottom:15px;">🗺️</span>
+          <p style="margin:0 0 10px 0; font-weight:bold;">Interactive map not available</p>
+          <p style="margin:0 0 20px 0; font-size:0.9em; opacity:0.9;">Add your Google Maps API key to <code style="background:rgba(0,0,0,0.2); padding:4px 8px; border-radius:4px;">server/.env</code> to enable</p>
+          <a href="https://www.google.com/maps?q=${query}" target="_blank" class="map-link" style="display:inline-block; background:white; color:#667eea; padding:10px 20px; border-radius:6px; text-decoration:none; font-weight:bold;">Open in Google Maps ↗</a>
+        </div>
+      `;
+    }
   } else {
     mapContainer.innerHTML = `
       <div class="map-placeholder">

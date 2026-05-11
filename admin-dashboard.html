@@ -162,14 +162,14 @@
 
     function checkAuth() {
       const token = localStorage.getItem('token'), user = localStorage.getItem('user');
-      if (!token || !user) { window.location.href = 'login.html'; return false; }
+      if (!token || !user) { window.location.href = '/login'; return false; }
       currentUser = JSON.parse(user);
-      if (currentUser.role !== 'admin') { window.location.href = 'user-dashboard.html'; return false; }
+      if (currentUser.role !== 'admin') { window.location.href = '/user-dashboard'; return false; }
       return true;
     }
     function getHeaders() { return { 'Authorization': 'Bearer ' + localStorage.getItem('token') }; }
     function getJSONHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }; }
-    function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = 'login.html'; }
+    function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }
     function showToast(msg, type) { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'toast ' + (type||'info') + ' show'; setTimeout(function(){ t.classList.remove('show'); }, 3000); }
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
     function spotImage(img) { if (!img) return ''; return img.startsWith('http') ? img : '/spot-pictures/' + encodeURIComponent(img); }

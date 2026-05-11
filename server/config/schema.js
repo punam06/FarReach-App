@@ -81,6 +81,14 @@ async function initializeDatabase() {
       await connection.query('ALTER TABLE reviews MODIFY spot_id INT NULL');
     } catch (e) {}
 
+    // Add latitude and longitude columns to spots table for Google Maps
+    try {
+      await connection.query('ALTER TABLE spots ADD COLUMN latitude DECIMAL(10, 8)');
+      await connection.query('ALTER TABLE spots ADD COLUMN longitude DECIMAL(11, 8)');
+    } catch (e) {
+      // Columns might already exist, ignore errors safely
+    }
+
     await connection.query(`CREATE TABLE IF NOT EXISTS saved_spots (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
@@ -189,32 +197,32 @@ async function initializeDatabase() {
       const divMap = {}; allDivs.forEach(d => { divMap[d.name] = d.id; });
 
       const spots = [
-        {name:"Cox's Bazar Beach",district:"Cox's Bazar",division:'Chattogram',category:'Beach',description:"The world's longest natural beach stretching 120 km along the Bay of Bengal.",history:"Discovered in 1798 by British officer Captain Hiram Cox.",image:"Coxs bazar.jpg",budget:'Low'},
-        {name:'Sundarbans',district:'Khulna',division:'Jessore',category:'Wildlife',description:'Largest mangrove forest in the world, home to the Royal Bengal Tiger.',history:'Declared a UNESCO World Heritage Site in 1997.',image:'Sundarban_Tiger.jpg',budget:'Low'},
-        {name:'Saint Martin Island',district:"Cox's Bazar",division:'Chattogram',category:'Island',description:'A small island with pristine beaches and coral reefs.',history:'Originally known as Narikel Jinjira (Coconut Island).',image:'Saint martin.jpg',budget:'Low'},
-        {name:'Rangamati',district:'Rangamati',division:'Chattogram',category:'Mountain',description:'Scenic hill tracts with beautiful waterfalls and tribal culture.',history:'Established as an administrative center in 1860.',image:'Rangamati.jpg',budget:'Low'},
-        {name:'Bandarban',district:'Bandarban',division:'Chattogram',category:'Mountain',description:'Adventure destination with trekking trails and indigenous villages.',history:'Bandarban was historically part of the Arakan Kingdom.',image:'Bandarban.jpg',budget:'Low'},
-        {name:'Sylhet Tea Gardens',district:'Sylhet',division:'Sylhet',category:'Nature',description:'Vast green tea estates across rolling hills.',history:'Tea cultivation began in Sylhet in 1849.',image:'tea garden.jpg',budget:'Low'},
-        {name:'Sreemangal',district:'Moulvibazar',division:'Sylhet',category:'Nature',description:'Center of tea and rubber plantations with eco-tourism.',history:'Known as the Tea Capital of Bangladesh.',image:'SRIMANGAL.jpg',budget:'Low'},
-        {name:'Jaflong',district:'Sylhet',division:'Sylhet',category:'Nature',description:'A picturesque location with stone mines and local flora.',history:'Jaflong has been a significant trading post for centuries.',image:'Jaflang.jpg',budget:'Low'},
-        {name:'Lawachara National Park',district:'Moulvibazar',division:'Sylhet',category:'Wildlife',description:'Rainforest sanctuary with diverse bird species and hiking trails.',history:'Established in 1996 as a national park.',image:'LAWYACHORA GARDEN.jpg',budget:'Low'},
-        {name:'Kuakata Beach',district:'Patuakhali',division:'Barishal',category:'Beach',description:'Beautiful beach where you can see both sunrise and sunset.',history:'Kuakata gets its name from Kua (well) dug by early Rakhine settlers.',image:'Kuyakata.jpg',budget:'Low'},
-        {name:'Chittagong Hill Tracts',district:'Chittagong',division:'Chattogram',category:'Mountain',description:'Scenic mountainous area with waterfalls and tribal heritage.',history:'Inhabited by indigenous tribes for over 2,000 years.',image:'Chittagong hill tracks.jpg',budget:'Low'},
-        {name:'Sonargaon',district:'Narayanganj',division:'Dhaka',category:'Historical',description:'Historic city with traditional architecture and folk art museum.',history:'The ancient capital of Bengal from the 13th to 16th century.',image:'Sonargaon .jpg',budget:'Low'},
-        {name:'Lalbagh Fort',district:'Dhaka',division:'Dhaka',category:'Historical',description:'Mughal-era fortress showcasing rich architectural heritage.',history:'Built in 1678 by Prince Azam Shah.',image:'Lalbagh fort.jpg',budget:'Low'},
-        {name:'Ahsan Manzil',district:'Dhaka',division:'Dhaka',category:'Historical',description:'Stunning palace complex from the 19th century.',history:'Built in 1872 by Nawab Abdul Gani.',image:'ahsan-monjil.jpg',budget:'Low'},
-        {name:'Nilgiri',district:'Bandarban',division:'Chattogram',category:'Mountain',description:'Mountain resort with panoramic views and trekking.',history:'Sacred site for indigenous tribes for centuries.',image:'Nilgiri.jpg',budget:'High'},
-        {name:'Ramsagar National Park',district:'Dinajpur',division:'Rangpur',category:'Wildlife',description:'Historic natural park with scenic lake and botanical gardens.',history:'The Ramsagar Lake was constructed in 1750-1758.',image:'Ramsagar national park.jpg',budget:'Low'},
-        {name:'Bisnakandi',district:'Sylhet',division:'Sylhet',category:'Nature',description:'Scenic area with stone-laden streams and natural beauty.',history:'Center of stone trade for centuries.',image:'Bishankandi-4.jpg',budget:'Low'},
-        {name:"Foy's Lake",district:'Chittagong',division:'Chattogram',category:'Lake',description:'Artificial lake surrounded by hills.',history:"Created in 1924 by the British.",image:'Foys lake.jpg',budget:'Low'},
-        {name:'Patenga Beach',district:'Chittagong',division:'Chattogram',category:'Beach',description:'Popular beach near Chittagong with maritime views.',history:'Patenga has been a crucial maritime port for centuries.',image:'Potenga sea Beach .jpg',budget:'Low'},
-        {name:'Tajhat Palace',district:'Rangpur',division:'Rangpur',category:'Historical',description:'Magnificent Raj-era palace with impressive architecture.',history:'Built in the early 20th century by Maharaja Kumar Gopal Lal Roy.',image:'Tazhat palace.jpg',budget:'Low'}
+        {name:"Cox's Bazar Beach",district:"Cox's Bazar",division:'Chattogram',category:'Beach',description:"The world's longest natural beach stretching 120 km along the Bay of Bengal.",history:"Discovered in 1798 by British officer Captain Hiram Cox.",image:"Coxs bazar.jpg",budget:'Low',lat:21.4435,lng:91.9674},
+        {name:'Sundarbans',district:'Khulna',division:'Jessore',category:'Wildlife',description:'Largest mangrove forest in the world, home to the Royal Bengal Tiger.',history:'Declared a UNESCO World Heritage Site in 1997.',image:'Sundarban_Tiger.jpg',budget:'Low',lat:21.9497,lng:89.1833},
+        {name:'Saint Martin Island',district:"Cox's Bazar",division:'Chattogram',category:'Island',description:'A small island with pristine beaches and coral reefs.',history:'Originally known as Narikel Jinjira (Coconut Island).',image:'Saint martin.jpg',budget:'Low',lat:20.6289,lng:92.3197},
+        {name:'Rangamati',district:'Rangamati',division:'Chattogram',category:'Mountain',description:'Scenic hill tracts with beautiful waterfalls and tribal culture.',history:'Established as an administrative center in 1860.',image:'Rangamati.jpg',budget:'Low',lat:22.6376,lng:92.3032},
+        {name:'Bandarban',district:'Bandarban',division:'Chattogram',category:'Mountain',description:'Adventure destination with trekking trails and indigenous villages.',history:'Bandarban was historically part of the Arakan Kingdom.',image:'Bandarban.jpg',budget:'Low',lat:22.1936,lng:92.2163},
+        {name:'Sylhet Tea Gardens',district:'Sylhet',division:'Sylhet',category:'Nature',description:'Vast green tea estates across rolling hills.',history:'Tea cultivation began in Sylhet in 1849.',image:'tea garden.jpg',budget:'Low',lat:24.9145,lng:91.7015},
+        {name:'Sreemangal',district:'Moulvibazar',division:'Sylhet',category:'Nature',description:'Center of tea and rubber plantations with eco-tourism.',history:'Known as the Tea Capital of Bangladesh.',image:'SRIMANGAL.jpg',budget:'Low',lat:24.3165,lng:91.7295},
+        {name:'Jaflong',district:'Sylhet',division:'Sylhet',category:'Nature',description:'A picturesque location with stone mines and local flora.',history:'Jaflong has been a significant trading post for centuries.',image:'Jaflang.jpg',budget:'Low',lat:25.0908,lng:92.2397},
+        {name:'Lawachara National Park',district:'Moulvibazar',division:'Sylhet',category:'Wildlife',description:'Rainforest sanctuary with diverse bird species and hiking trails.',history:'Established in 1996 as a national park.',image:'LAWYACHORA GARDEN.jpg',budget:'Low',lat:24.4264,lng:91.7088},
+        {name:'Kuakata Beach',district:'Patuakhali',division:'Barishal',category:'Beach',description:'Beautiful beach where you can see both sunrise and sunset.',history:'Kuakata gets its name from Kua (well) dug by early Rakhine settlers.',image:'Kuyakata.jpg',budget:'Low',lat:21.8191,lng:90.1829},
+        {name:'Chittagong Hill Tracts',district:'Chittagong',division:'Chattogram',category:'Mountain',description:'Scenic mountainous area with waterfalls and tribal heritage.',history:'Inhabited by indigenous tribes for over 2,000 years.',image:'Chittagong hill tracks.jpg',budget:'Low',lat:22.5897,lng:92.1647},
+        {name:'Sonargaon',district:'Narayanganj',division:'Dhaka',category:'Historical',description:'Historic city with traditional architecture and folk art museum.',history:'The ancient capital of Bengal from the 13th to 16th century.',image:'Sonargaon .jpg',budget:'Low',lat:23.6947,lng:90.6964},
+        {name:'Lalbagh Fort',district:'Dhaka',division:'Dhaka',category:'Historical',description:'Mughal-era fortress showcasing rich architectural heritage.',history:'Built in 1678 by Prince Azam Shah.',image:'Lalbagh fort.jpg',budget:'Low',lat:23.7604,lng:90.3690},
+        {name:'Ahsan Manzil',district:'Dhaka',division:'Dhaka',category:'Historical',description:'Stunning palace complex from the 19th century.',history:'Built in 1872 by Nawab Abdul Gani.',image:'ahsan-monjil.jpg',budget:'Low',lat:23.7604,lng:90.3680},
+        {name:'Nilgiri',district:'Bandarban',division:'Chattogram',category:'Mountain',description:'Mountain resort with panoramic views and trekking.',history:'Sacred site for indigenous tribes for centuries.',image:'Nilgiri.jpg',budget:'High',lat:22.4678,lng:92.3033},
+        {name:'Ramsagar National Park',district:'Dinajpur',division:'Rangpur',category:'Wildlife',description:'Historic natural park with scenic lake and botanical gardens.',history:'The Ramsagar Lake was constructed in 1750-1758.',image:'Ramsagar national park.jpg',budget:'Low',lat:25.6400,lng:88.6355},
+        {name:'Bisnakandi',district:'Sylhet',division:'Sylhet',category:'Nature',description:'Scenic area with stone-laden streams and natural beauty.',history:'Center of stone trade for centuries.',image:'Bishankandi-4.jpg',budget:'Low',lat:24.4328,lng:91.8222},
+        {name:"Foy's Lake",district:'Chittagong',division:'Chattogram',category:'Lake',description:'Artificial lake surrounded by hills.',history:"Created in 1924 by the British.",image:'Foys lake.jpg',budget:'Low',lat:22.3345,lng:91.8193},
+        {name:'Patenga Beach',district:'Chittagong',division:'Chattogram',category:'Beach',description:'Popular beach near Chittagong with maritime views.',history:'Patenga has been a crucial maritime port for centuries.',image:'Potenga sea Beach .jpg',budget:'Low',lat:22.2896,lng:91.8193},
+        {name:'Tajhat Palace',district:'Rangpur',division:'Rangpur',category:'Historical',description:'Magnificent Raj-era palace with impressive architecture.',history:'Built in the early 20th century by Maharaja Kumar Gopal Lal Roy.',image:'Tazhat palace.jpg',budget:'Low',lat:25.7407,lng:88.6373}
       ];
 
       for (const s of spots) {
         await connection.query(
-          'INSERT INTO spots (name,district_id,division_id,category,description,history,image,budget_category) VALUES (?,?,?,?,?,?,?,?)',
-          [s.name, distMap[s.district]||null, divMap[s.division]||null, s.category, s.description, s.history, s.image, s.budget]
+          'INSERT INTO spots (name,district_id,division_id,category,description,history,image,budget_category,latitude,longitude) VALUES (?,?,?,?,?,?,?,?,?,?)',
+          [s.name, distMap[s.district]||null, divMap[s.division]||null, s.category, s.description, s.history, s.image, s.budget, s.lat, s.lng]
         );
       }
       console.log('Spots seeded');

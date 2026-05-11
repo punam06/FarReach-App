@@ -6,7 +6,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "prod": "NODE_ENV=production node index.js",
+    "test": "echo \"Run tests here\"",
+    "verify": "npm list && echo 'Dependencies verified'"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

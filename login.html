@@ -63,10 +63,11 @@
     function storeAndRedirect(user, token) {
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+      // Use consistent absolute paths for redirects
       if (user.role === 'admin') {
-        window.location.href = 'admin-dashboard.html';
+        window.location.href = '/admin-dashboard';
       } else {
-        window.location.href = 'user-dashboard.html';
+        window.location.href = '/user-dashboard';
       }
     }
 

@@ -150,4 +150,12 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Failed to fetch dashboard data.' }); }
 });
 
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    const [users] = await pool.query('SELECT id, name, email, role, is_verified, profile_pic, phone, address, created_at FROM users WHERE id = ?', [req.user.id]);
+    if (users.length === 0) return res.status(404).json({ error: 'User not found.' });
+    res.json({ user: users[0] });
+  } catch (err) { res.status(500).json({ error: 'Failed to fetch profile.' }); }
+});
+
 module.exports = router;
