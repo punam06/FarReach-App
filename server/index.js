@@ -708,7 +708,7 @@ app.post('/api/hotels/search', async (req, res) => {
 
 app.get('/api/reviews', async (req, res) => {
   try {
-    const spotId = req.query.spotId;
+    const { spotId, destinationName } = req.query;
     let query = `
       SELECT r.*, u.name as userName, u.profile_pic as userAvatar, s.name as spotName 
       FROM reviews r 
@@ -720,6 +720,9 @@ app.get('/api/reviews', async (req, res) => {
     if (spotId) {
       query += ' WHERE r.spot_id = ?';
       params.push(spotId);
+    } else if (destinationName) {
+      query += ' WHERE s.name = ?';
+      params.push(destinationName);
     }
     query += ' ORDER BY r.created_at DESC';
 
@@ -736,10 +739,27 @@ app.post('/api/reviews', async (req, res) => {
     const user = await currentUserFromRequest(req);
     if (!user) return res.status(401).json({ error: 'sign in required' });
 
-    const { spotId, rating, text } = req.body;
+    let { spotId, destinationName, rating, text } = req.body;
     
-    if (!spotId) return res.status(400).json({ error: 'spotId is required' });
+    if (!spotId && !destinationName) return res.status(400).json({ error: 'spotId or destinationName is required' });
     if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: 'invalid rating' });
+
+    // Look up spot_id if only destinationName is provided
+    if (!spotId && destinationName) {
+      const [spotsRes] = await db.query('SELECT id FROM spots WHERE name = ?', [destinationName]);
+      if (spotsRes.length === 0) return res.status(404).json({ error: 'Spot not found in database' });
+      spotId = spotsRes[0].id;
+    }
+
+    // Enforce booking requirement
+    const [bookings] = await db.query(
+      "SELECT id FROM bookings WHERE user_id = ? AND spot_id = ? AND type = 'package' AND status = 'confirmed'",
+      [user.id, spotId]
+    );
+
+    if (bookings.length === 0) {
+      return res.status(403).json({ error: 'You can only review a spot if you have visited it and taken our packages.' });
+    }
 
     await db.query(
       'INSERT INTO reviews (user_id, spot_id, rating, text) VALUES (?, ?, ?, ?)',

@@ -679,7 +679,7 @@ function initReviewSection() {
     if (!reviewList) return;
     reviewList.innerHTML = '<p>Loading reviews...</p>';
     try {
-      const response = await fetch(`/api/reviews?destinationId=${encodeURIComponent(String(destIndex))}`);
+      const response = await fetch(`/api/reviews?destinationName=${encodeURIComponent(destinationName)}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not load reviews');
 
