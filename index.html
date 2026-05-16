@@ -4,9 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bangladesh Tourism Explorer</title>
+
+  <script>
+    if (window.location.port === '5501') {
+      window.location.replace('http://127.0.0.1:3000/');
+    }
+  </script>
+  <script>
+    window.onGoogleMapsApiLoaded = window.onGoogleMapsApiLoaded || function () {};
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.0/MarkerCluster.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.0/MarkerCluster.Default.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -25,39 +38,31 @@
       <nav class="nav">
         <a href="#home">Home</a>
         <a href="#discover">Destinations</a>
-        <a href="#divisions">Division</a>
         <a href="#categoryBar">Categories</a>
         <a href="#faq">FAQ</a>
       </nav>
-      <a class="nav-cta" href="#discover">Explore Now</a>
-
-      <div class="auth-section" id="authSection">
-        <span id="loginStatus" style="color:var(--muted); margin-right:8px;"></span>
-        <a id="dashboardLink" href="/user-dashboard" style="display:none; margin-right:8px; color:var(--accent); text-decoration:none; font-weight:600;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-        <button class="button secondary" id="loginBtn" onclick="window.location.href='/login'">Login</button>
-        <button class="button primary" id="signupBtn" onclick="window.location.href='/register'">Sign Up</button>
-        <button class="button secondary" id="logoutBtn" style="display:none;" onclick="logout()">Logout</button>
+      <div class="topbar-actions">
+        <a class="nav-cta" href="#discover">Explore Now</a>
+        <button class="nav-cta nav-secondary" type="button" id="authOpenBtn">Login / Sign up</button>
+        <button class="user-pill" type="button" id="accountButton" hidden>Account</button>
+        <button class="nav-cta nav-secondary" type="button" id="logoutBtn" hidden>Logout</button>
       </div>
-	    </header>
-
-    <!-- 8-Division Grid -->
-    <section class="section" id="divisions">
-      <header class="section-heading">
-        <h2>Explore by Division</h2>
-        <p>Browse the 8 divisions of Bangladesh.</p>
-      </header>
-      <div class="search-panel division-search-panel">
-        <div class="search-row">
-          <input id="districtSearch" type="text" placeholder="Search divisions..." oninput="searchDivisions()">
-          <button type="button" onclick="searchDivisions()">Search</button>
-        </div>
-      </div>
-      <div class="division-grid" id="divisionGrid"></div>
-    </section>
-
+    </header>
+    <!-- Category bar inserted below header for quick access -->
     <div class="category-bar" id="categoryBar" aria-label="Destination categories"></div>
 
     <main id="home">
+      <section class="section division-section" id="divisionExplorer">
+        <header class="section-heading">
+          <h2>Explore By Division</h2>
+          <p>Browse destinations from all 8 divisions of Bangladesh and filter the whole page by one division.</p>
+        </header>
+        <div class="division-search-row">
+          <input id="divisionSearch" type="text" placeholder="Search divisions..." aria-label="Search divisions">
+        </div>
+        <div class="division-grid" id="divisionGrid"></div>
+      </section>
+
       <section class="hero">
         <article class="hero-copy">
           <p class="eyebrow">Bangladesh Explorer</p>
@@ -120,55 +125,11 @@
             <p id="featuredDistrict">Loading district...</p>
             <div class="hero-card-footer">
               <span id="featuredMeta">Category</span>
-              <a href="#discover" id="spotDetailLink">See Details</a>
+              <a href="#" id="featuredDetailsLink">See Details</a>
             </div>
           </article>
 
-          <div class="feature-bar-title">
-            <span>Quick Navigation</span>
-          </div>
-
-          <nav class="feature-bar" aria-label="Tourism tools">
-            <a class="feature-link" href="#discover">
-              <span class="feature-icon">🗺️</span>
-              <span>
-                <strong>Map</strong>
-                <small>Browse destinations</small>
-              </span>
-            </a>
-            <a class="feature-link" href="#" data-action="weather">
-              <span class="feature-icon">🌤️</span>
-              <span>
-                <strong>Weather</strong>
-                <small>See trip conditions</small>
-              </span>
-            </a>
-            <a class="feature-link" href="#faq">
-              <span class="feature-icon">🧭</span>
-              <span>
-                <strong>Guide</strong>
-                <small>Travel help</small>
-              </span>
-            </a>
-            <a class="feature-link" href="#faq">
-              <span class="feature-icon">🎟️</span>
-              <span>
-                <strong>Ticket</strong>
-                <small>Shohoz booking</small>
-              </span>
-            </a>
-          </nav>
-
-          <article id="weatherCard" class="weather-card" aria-live="polite" style="display:none">
-            <div class="weather-top">
-              <div class="weather-icon" id="heroWeatherIcon">🌤️</div>
-              <div class="weather-main">
-                <div id="heroWeatherTemp">--°C</div>
-                <div id="heroWeatherDesc">Loading...</div>
-              </div>
-            </div>
-            <div class="weather-suggestion" id="heroWeatherSuggestion">Get weather to see travel suggestion.</div>
-          </article>
+          <!-- category chips moved to top category bar -->
         </aside>
       </section>
 
@@ -176,88 +137,81 @@
         <header class="section-heading">
           <h2>Top Destinations</h2>
           <p>
-            Pick any card to preview that destination in the feature panel. Search and category filters are applied everywhere so your visitors can quickly find the right place.
+            Pick any card or marker on the map to preview that destination in the feature panel. Search and category filters are applied everywhere so your visitors can quickly find the right place.
           </p>
         </header>
-        <div class="popular-grid" id="popularGrid"></div>
-      </section>
-
-      <section class="section" id="homepage-review">
-        <header class="section-heading">
-          <h2>Leave a Review</h2>
-          <p>Share your travel experience. Submitting without login will redirect you to the login page.</p>
-        </header>
-        <div id="homepageReviewContainer"></div>
-        <div class="homepage-review-form">
-          <div class="star-rating" id="homepageStarRating" aria-label="5 star rating">
-            <span class="star" data-value="1">☆</span>
-            <span class="star" data-value="2">☆</span>
-            <span class="star" data-value="3">☆</span>
-            <span class="star" data-value="4">☆</span>
-            <span class="star" data-value="5">☆</span>
+        <div class="map-container">
+          <div id="tourismMap" class="tourism-map"></div>
+          <div class="map-legend">
+            <span class="legend-item"><span class="legend-dot nature"></span> Nature</span>
+            <span class="legend-item"><span class="legend-dot beach"></span> Beach</span>
+            <span class="legend-item"><span class="legend-dot history"></span> History</span>
+            <span class="legend-item"><span class="legend-dot religious"></span> Religious</span>
+            <span class="legend-item"><span class="legend-dot culture"></span> Culture</span>
+            <span class="legend-item"><span class="legend-dot other"></span> Other</span>
           </div>
-          <textarea id="homepageReviewText" placeholder="Write your review..." rows="4"></textarea>
-          <div class="review-note" id="homepageReviewNote">You can draft your review here. Sign in to publish it.</div>
-          <button class="button primary review-submit" onclick="submitHomepageReview()">Submit Review</button>
+          <p class="map-help-text">Tip: click any marker to open a quick preview, or select a destination card to move the map there automatically.</p>
         </div>
+        <div class="popular-grid" id="popularGrid"></div>
       </section>
 
       <section class="section result-section" id="route">
         <header class="section-heading">
-          <h2>Destination Details</h2>
+          <h2>Excursion Route</h2>
           <p>
-            Explore comprehensive information about your selected destination including weather, routes, accommodations, guides, and your travel history.
+            This section highlights one selected destination with useful details based on your current search and category.
           </p>
         </header>
 
         <article class="result-card" id="resultCard">
           <div class="result-visual" id="resultVisual"></div>
           <div class="result-copy">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <h3 id="resultName" style="margin:0;">Destination Name</h3>
-              <button class="button secondary" id="saveSpotBtn" onclick="saveCurrentSpot()" style="padding:6px 12px; font-size:14px;"><i class="far fa-heart"></i> Save Spot</button>
-            </div>
+            <h3 id="resultName">Destination Name</h3>
             <p id="resultDesc">Destination description will appear here.</p>
 
             <div class="detail-list">
-              <div>
-                <strong>District</strong>
-                <span id="resultDistrict">-</span>
-              </div>
-              <div>
-                <strong>Category</strong>
-                <span id="resultCategory">-</span>
-              </div>
-              <div>
-                <strong>Match Position</strong>
-                <span id="resultIndex">-</span>
-              </div>
+              <div><strong>District</strong><span id="resultDistrict">-</span></div>
+              <div><strong>Category</strong><span id="resultCategory">-</span></div>
+              <div><strong>Budget</strong><span id="resultBudgetPill">-</span></div>
             </div>
 
             <div class="budget-panel" id="budgetSection">
               <div class="budget-panel-head">
-                <div>
-                  <h4>Budget Calculator</h4>
-                  <p>Estimate trips, hotel, and guide costs before you travel.</p>
-                </div>
-                <span class="budget-pill" id="budgetBadge">Budget ready</span>
+                <div><h4>Budget Calculator</h4><p>Estimate trip, hotel, and guide costs.</p></div>
+                <span class="budget-pill" id="budgetBadge">Ready</span>
               </div>
-
               <div class="budget-grid">
-                <label>
-                  Travelers
-                  <input type="number" id="budgetTravelers" min="1" value="2">
+                <label>Your District
+                  <select id="budgetOrigin">
+                    <option value="">-- Select --</option>
+                    <option value="Dhaka">Dhaka</option>
+                    <option value="Chattogram">Chattogram</option>
+                    <option value="Rajshahi">Rajshahi</option>
+                    <option value="Khulna">Khulna</option>
+                    <option value="Sylhet">Sylhet</option>
+                    <option value="Rangamati">Rangamati</option>
+                    <option value="Cox's Bazar">Cox's Bazar</option>
+                    <option value="Bandarban">Bandarban</option>
+                    <option value="Khagrachari">Khagrachari</option>
+                    <option value="Cumilla">Cumilla</option>
+                    <option value="Noakhali">Noakhali</option>
+                    <option value="Patuakhali">Patuakhali</option>
+                    <option value="Naogaon">Naogaon</option>
+                    <option value="Narayanganj">Narayanganj</option>
+                    <option value="Bagerhat">Bagerhat</option>
+                    <option value="Sunamganj">Sunamganj</option>
+                    <option value="Moulvibazar">Moulvibazar</option>
+                    <option value="Dinajpur">Dinajpur</option>
+                    <option value="Kushtia">Kushtia</option>
+                    <option value="Pabna">Pabna</option>
+                    <option value="Meherpur">Meherpur</option>
+                    <option value="Madaripur">Madaripur</option>
+                  </select>
                 </label>
-                <label>
-                  Nights
-                  <input type="number" id="budgetNights" min="1" value="2">
-                </label>
-                <label>
-                  Guide Days
-                  <input type="number" id="budgetGuideDays" min="0" value="1">
-                </label>
-                <label>
-                  Transport
+                <label>Travelers <input type="number" id="budgetTravelers" min="1" value="2"></label>
+                <label>Nights <input type="number" id="budgetNights" min="1" value="2"></label>
+                <label>Guide Days <input type="number" id="budgetGuideDays" min="0" value="1"></label>
+                <label>Transport
                   <select id="budgetTransport">
                     <option value="bus">Bus</option>
                     <option value="train">Train</option>
@@ -265,8 +219,7 @@
                     <option value="air">Air</option>
                   </select>
                 </label>
-                <label>
-                  Hotel Tier
+                <label>Hotel Tier
                   <select id="budgetHotelTier">
                     <option value="budget">Budget</option>
                     <option value="standard">Standard</option>
@@ -274,252 +227,216 @@
                   </select>
                 </label>
               </div>
-
-              <div class="budget-actions">
-                <button type="button" class="button primary" onclick="calculateBudget()">Calculate Budget</button>
-              </div>
-
-              <div class="budget-result" id="budgetResult">
-                Select a destination to see the estimate.
-              </div>
+              <div class="budget-actions"><button type="button" class="button primary" onclick="calculateBudget()">Calculate Budget</button></div>
+              <div class="budget-result" id="budgetResult">Select a destination to see estimate.</div>
             </div>
-
-            <div class="result-history" id="resultHistory" style="display: none;"></div>
 
             <div class="tab-navigation">
               <button class="tab-button active" onclick="showTab('weather', this)">🌤️ Weather</button>
               <button class="tab-button" onclick="showTab('map', this)">🗺️ Map</button>
               <button class="tab-button" onclick="showTab('route', this)">🚌 Route</button>
               <button class="tab-button" onclick="showTab('hotel', this)">🏨 Hotel</button>
-               <button class="tab-button" onclick="showTab('guide', this)">👥 Guide</button>
               <button class="tab-button" onclick="showTab('reviews', this)">⭐ Reviews</button>
-              <button class="tab-button" onclick="showTab('history', this)">📜 History</button>
             </div>
 
             <div class="tab-content">
               <div id="weather-tab" class="tab-pane active">
-                <div class="weather-section">
-                  <div class="weather-display">
-                    <div class="weather-info">
-                      <div class="weather-icon" id="tabWeatherIcon">🌤️</div>
-                      <div class="weather-details">
-                        <div class="weather-temp" id="tabWeatherTemp">--°C</div>
-                        <div class="weather-desc" id="tabWeatherDesc">Select a destination to see weather</div>
-                      </div>
-                    </div>
-                    <div class="weather-suggestion" id="tabWeatherSuggestion">Select a destination to see weather forecast</div>
-                  </div>
-                  <div class="five-day-forecast" id="fiveDayForecast" style="margin-top:20px;">
-                    <h5>5-Day Forecast</h5>
-                    <div id="forecastList"></div>
-                  </div>
-                  <div class="weather-controls" style="margin-top:16px;">
-                    <label for="tripDate">Check Specific Date:</label>
-                    <input type="date" id="tripDate">
-                    <button class="button primary" onclick="getTabWeather()">Get Forecast</button>
+                <div class="weather-display">
+                  <div class="weather-icon" id="tabWeatherIcon">🌤️</div>
+                  <div class="weather-details">
+                    <div class="weather-temp" id="tabWeatherTemp">--°C</div>
+                    <div class="weather-desc" id="tabWeatherDesc">Select a spot</div>
                   </div>
                 </div>
               </div>
-
-              <div id="map-tab" class="tab-pane">
-                <div class="map-section">
-                  <h4>Location Map</h4>
-                  <div class="map-container" id="mapContainer">
-                    <div class="map-placeholder" id="mapPlaceholder">
-                      <span class="map-icon">🗺️</span>
-                      <p>Select a destination to view its location on the map</p>
-                      <p class="map-hint">Add your Google Maps API key to server/.env to enable interactive maps</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div id="route-tab" class="tab-pane">
-                <div class="route-section">
-                  <h4>Transportation Options</h4>
-                  <div class="route-options" id="routeOptions"></div>
-                </div>
-              </div>
-
+              <div id="map-tab" class="tab-pane"><div id="mapContainer" class="map-container">Select a destination to view map</div></div>
+              <div id="route-tab" class="tab-pane"><div id="routeOptions"></div></div>
               <div id="hotel-tab" class="tab-pane">
                 <div class="hotel-section">
-                  <h4>Hotel Booking Assistant</h4>
-                  <p style="color:var(--muted); margin-bottom:16px;">Find the perfect stay with your specific requirements.</p>
-
-                  <div class="booking-form" id="hotelBookingForm">
-                    <div class="form-group">
-                      <label for="hotelType">Type of Stay</label>
-                      <input type="text" id="hotelType" placeholder="e.g., Boutique Hotel / Eco-Resort" class="modal-input">
+                  <h4>Find Accommodations</h4>
+                  <div class="booking-form" style="display:grid; gap:10px; margin-bottom:20px;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                      <input type="date" id="hotelCheckin" class="modal-input">
+                      <input type="date" id="hotelCheckout" class="modal-input">
                     </div>
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label for="hotelCity">City/Area</label>
-                        <input type="text" id="hotelCity" placeholder="e.g., Cox's Bazar" class="modal-input">
-                      </div>
-                      <div class="form-group">
-                        <label for="hotelPeople">Number of People</label>
-                        <input type="number" id="hotelPeople" placeholder="2" min="1" max="10" class="modal-input">
-                      </div>
-                    </div>
-                    <div class="form-group">
-                      <label for="hotelFeatures">Required Features</label>
-                      <input type="text" id="hotelFeatures" placeholder="e.g., workstation with high-speed internet, pool, 24/7 power backup" class="modal-input">
-                    </div>
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label for="checkinDate">Check-in Date</label>
-                        <input type="date" id="checkinDate" class="modal-input">
-                      </div>
-                      <div class="form-group">
-                        <label for="checkoutDate">Check-out Date</label>
-                        <input type="date" id="checkoutDate" class="modal-input">
-                      </div>
-                    </div>
-                    <div class="form-actions">
-                      <button class="button primary" onclick="searchHotels()">Search Hotels</button>
-                      <button class="button secondary" onclick="resetHotelForm()">Reset</button>
-                    </div>
+                    <button class="button primary" onclick="searchHotels()">Search Hotels</button>
                   </div>
-
-                  <div id="hotelResults" class="hotel-results" style="display:none;">
-                    <h5>Search Results</h5>
-                    <div id="hotelResultsList"></div>
-                    <div class="price-calculator" id="priceCalculator" style="display:none;">
-                      <h5>Price Calculator</h5>
-                      <div id="priceBreakdown"></div>
-                    </div>
-                  </div>
+                  <div id="hotelResultsList"></div>
 
                   <div class="booking-portals" style="margin-top:24px;">
-                    <h5>Or Book Directly via BD Portals</h5>
+                    <h5>Direct Booking Portals</h5>
                     <div class="booking-buttons">
                       <a href="https://hotel.com.bd" target="_blank" class="button secondary booking-btn">Hotel.com.bd</a>
-                      <a href="https://www.booking.com/searchresults.html?ss=Bangladesh" target="_blank" class="button secondary booking-btn">Find My Hotel</a>
+                      <a href="https://gozayan.com/hotel" target="_blank" class="button secondary booking-btn">GoZayan</a>
                       <a href="https://careflybd.com/hotel-booking/" target="_blank" class="button secondary booking-btn">Boknow</a>
                       <a href="https://hotels.gov.bd" target="_blank" class="button secondary booking-btn">Parjatan (Official)</a>
                     </div>
                   </div>
                 </div>
               </div>
-
-               <div id="guide-tab" class="tab-pane">
-                <div class="guide-section">
-                  <h4>Available Local Guides</h4>
-                  <div class="guide-list" id="guideList"></div>
-                </div>
-              </div>
-              
-              <div id="reviews-tab" class="tab-pane">
-                <div class="review-section">
-                  <h4>Guest Reviews</h4>
-                  <div id="spotReviewsList" style="margin-bottom:20px;"></div>
-                  <div class="spot-review-form" id="spotReviewForm" style="display:none; background:rgba(0,0,0,0.03); padding:20px; border-radius:12px;">
-                    <h5>Share Your Experience</h5>
-                    <div class="star-rating" id="spotStarRating" style="margin-bottom:10px;">
-                      <span class="star" data-value="1">☆</span>
-                      <span class="star" data-value="2">☆</span>
-                      <span class="star" data-value="3">☆</span>
-                      <span class="star" data-value="4">☆</span>
-                      <span class="star" data-value="5">☆</span>
-                    </div>
-                    <textarea id="spotReviewText" placeholder="How was your visit?" class="modal-input" style="height:100px; margin-bottom:12px;"></textarea>
-                    <button class="button primary" onclick="submitSpotReview()">Post Review</button>
-                  </div>
-                  <div id="reviewLoginNote" style="text-align:center; padding:20px; color:var(--muted);">
-                    Please <a href="login.html" style="color:var(--primary);">login</a> to leave a review.
-                  </div>
-                </div>
-              </div>
-
-              <div id="history-tab" class="tab-pane">
-                <div class="history-section">
-                  <h4>Your Travel History</h4>
-                  <div class="history-list" id="historyList"></div>
-                </div>
-              </div>
+              <div id="reviews-tab" class="tab-pane"><div id="spotReviewsList">No reviews yet.</div></div>
             </div>
 
             <div class="result-actions">
-              <button class="button primary" type="button" onclick="focusSearch()">Search Another</button>
+              <a class="button primary" id="resultDetailsLink" href="#">View Full Details</a>
+              <button class="button secondary" type="button" onclick="focusSearch()">Search Another</button>
               <button class="button secondary" type="button" onclick="jumpToTop()">Back To Top</button>
             </div>
           </div>
+
         </article>
       </section>
 
-      <section class="contact-section" id="faq">
-        <div>
-          <h2>FAQ - Frequently Asked Questions</h2>
-          <p>
-            Find answers to common questions about Bangladesh tourism, travel planning, and using this platform.
-          </p>
-        </div>
-        <div class="faq-list">
-          <details class="faq-item">
+      <section class="section faq-section" id="faq">
+        <header class="faq-head">
+          <div>
+            <h2>FAQ - Frequently Asked Questions</h2>
+            <p>Find answers to common questions about Bangladesh tourism, travel planning, and this platform.</p>
+          </div>
+          <a class="button primary" id="faqStartBtn" href="#discover">Start Exploring</a>
+        </header>
+
+        <div class="faq-list" id="faqList">
+          <details class="faq-item" open>
             <summary>What is the best time to visit Bangladesh?</summary>
-            <p>The best time to visit Bangladesh is during winter (November to February) when the weather is pleasant and dry. Temperatures range from 12°C to 25°C, ideal for sightseeing and outdoor activities.</p>
+            <p>The best time is usually from November to February when the weather is cooler and more comfortable for travel.</p>
           </details>
           <details class="faq-item">
             <summary>Do I need a visa to visit Bangladesh?</summary>
-            <p>Most foreign nationals require a visa to enter Bangladesh. Visas can be obtained from Bangladeshi embassies or consulates abroad. Some countries are eligible for visa on arrival. Check with your local embassy for the latest requirements.</p>
+            <p>Most international travelers need a visa. Please check the latest Bangladesh embassy rules for your country before traveling.</p>
           </details>
           <details class="faq-item">
             <summary>What are the must-visit destinations in Bangladesh?</summary>
-            <p>Top destinations include Cox's Bazar (world's longest natural beach), Sundarbans (largest mangrove forest), Sylhet (tea gardens), Rangamati and Bandarban (hills and lakes), and historical sites like Lalbagh Fort and Ahsan Manzil in Dhaka.</p>
+            <p>Popular places include Cox's Bazar, Sundarbans, Sajek Valley, Bandarban, Sylhet, and historical landmarks in Dhaka.</p>
           </details>
           <details class="faq-item">
             <summary>Is Bangladesh safe for tourists?</summary>
-            <p>Bangladesh is generally safe for tourists. Like any destination, exercise normal precautions: avoid isolated areas at night, keep valuables secure, and stay informed about local conditions. The tourism infrastructure is improving steadily.</p>
-          </details>
-          <details class="faq-item">
-            <summary>What currency is used in Bangladesh?</summary>
-            <p>The currency is Bangladeshi Taka (BDT). Major cities have ATMs and currency exchange services. Credit cards are accepted in upscale hotels and restaurants, but cash is preferred in rural areas and small establishments.</p>
+            <p>Most tourist areas are generally safe with normal travel precautions. Follow local guidance and avoid isolated travel late at night.</p>
           </details>
           <details class="faq-item">
             <summary>How can I travel between cities in Bangladesh?</summary>
-            <p>Options include domestic flights, trains, long-distance buses (both government and private), and ridesharing services. For remote areas like the Chittagong Hill Tracts, local transport like jeeps and boats may be necessary.</p>
+            <p>You can use bus, train, domestic flights, and launch services depending on the route and your budget.</p>
           </details>
           <details class="faq-item">
-            <summary>What languages are spoken in Bangladesh?</summary>
-            <p>Bengali (Bangla) is the official language. English is widely spoken in urban areas, especially in tourism and business sectors. Learning a few Bengali phrases can enhance your travel experience.</p>
-          </details>
-          <details class="faq-item">
-            <summary>What should I pack for a trip to Bangladesh?</summary>
-            <p>Pack light, breathable clothing for the tropical climate, a light jacket for winter evenings, comfortable walking shoes, sun protection (hat, sunscreen), insect repellent, and any personal medications. For hill areas, bring warmer clothes.</p>
-          </details>
-          <details class="faq-item">
-            <summary>Are there any cultural norms I should be aware of?</summary>
-            <p>Dress modestly, especially when visiting religious sites. Remove shoes before entering homes or mosques. Public displays of affection are discouraged. During Ramadan, be respectful of fasting hours. Photography of sensitive areas (military installations, border areas) is prohibited.</p>
-          </details>
-          <details class="faq-item">
-            <summary>Can I use mobile networks and internet in Bangladesh?</summary>
-            <p>Yes, mobile coverage is extensive. Major operators include Grameenphone, Robi, Banglalink, and Teletalk. Tourist SIM cards are available at airports and city centers with proper documentation.</p>
-          </details>
-          <details class="faq-item">
-            <summary>How can I book hotels and transport in Bangladesh?</summary>
-            <p>You can use international platforms like Booking.com, or local sites like Shohoz, GoZayan, bdtickets, ShareTrip, and Jatri. Many hotels also accept direct bookings via phone or email.</p>
+            <summary>Can I book hotels and transport from here?</summary>
+            <p>Yes. Use the destination details page to find direct booking links for hotels and transport services.</p>
           </details>
         </div>
-        <a class="button primary" href="#home">Start Exploring</a>
       </section>
 
-      <footer class="site-footer">
-        <div class="footer-col">
-          <h4>About Us</h4>
-          <p>Bangladesh Tourism Explorer helps travelers discover the country's best destinations with weather, routes, guides, budget planning, and booking assistance.</p>
+      <section class="section" id="topReviewsSection" style="margin-top:40px;">
+        <div class="section-heading">
+          <h2>⭐ Top Reviews</h2>
+          <p>What our 5-star travelers are saying about their experiences.</p>
         </div>
-        <div class="footer-col">
-          <h4>Contact Us</h4>
-          <p>Email: <a href="mailto:info@bdtourism.com">info@bdtourism.com</a></p>
+        <div id="homeReviewsList" class="reviews-scroll-container">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <section class="contact-section" id="contactInfo">
+        <div>
+          <h3>About Us</h3>
+          <p>Bangladesh Tourism Explorer helps travelers discover top places with weather, guides, and booking support.</p>
+        </div>
+        <div>
+          <h3>Contact Us</h3>
+          <p>Email: info@bdtourism.com</p>
           <p>Phone: +880 1234-567890</p>
           <p>Address: Dhaka, Bangladesh</p>
         </div>
-      </footer>
+      </section>
+
+      <section class="connect-section" id="connect">
+        <div class="connect-container">
+          <h3>Connect with Us</h3>
+          <div class="social-links">
+            <a href="https://wa.me/+8801234567890" target="_blank" class="social-icon whatsapp" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+            <a href="https://facebook.com/bdtourism" target="_blank" class="social-icon facebook" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+            <a href="https://instagram.com/bdtourism" target="_blank" class="social-icon instagram" title="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="https://linkedin.com/company/bdtourism" target="_blank" class="social-icon linkedin" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+            <a href="mailto:info@bdtourism.com" class="social-icon email" title="Email"><i class="fas fa-envelope"></i></a>
+          </div>
+          <p class="copyright">&copy; 2026 Bangladesh Tourism Explorer. All rights reserved.</p>
+        </div>
+      </section>
     </main>
   </div>
 
+  <div class="auth-modal" id="authModal" aria-hidden="true">
+    <div class="auth-modal-backdrop" data-auth-close></div>
+    <section class="auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <button class="auth-close" type="button" data-auth-close aria-label="Close authentication panel">×</button>
+      <div class="auth-hero">
+        <p class="auth-kicker">Member access</p>
+        <h2 id="authTitle">Login or create your account</h2>
+        <p>Use your email to get a verification code first, then set your password after the code is confirmed.</p>
+      </div>
 
+      <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+        <button class="auth-tab active" type="button" data-auth-mode="login">Login</button>
+        <button class="auth-tab" type="button" data-auth-mode="signup">Create Account</button>
+      </div>
 
-  <script src="script.js"></script>
+      <div class="auth-message" id="authMessage" aria-live="polite"></div>
+
+      <form class="auth-panel" id="loginForm" novalidate>
+        <label>
+          <span>Email</span>
+          <input type="email" id="loginEmail" autocomplete="email" placeholder="you@example.com" required>
+        </label>
+        <label>
+          <span>Password</span>
+          <input type="password" id="loginPassword" autocomplete="current-password" placeholder="Enter your password" required>
+        </label>
+        <button class="button primary auth-submit" type="submit">Login</button>
+      </form>
+
+      <form class="auth-panel hidden" id="signupForm" novalidate>
+        <div class="auth-step" data-step="details">
+          <label>
+            <span>Full name</span>
+            <input type="text" id="signupName" autocomplete="name" placeholder="Your name" required>
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" id="signupEmail" autocomplete="email" placeholder="you@example.com" required>
+          </label>
+          <button class="button primary auth-submit" type="button" id="sendCodeBtn">Send verification code</button>
+        </div>
+
+        <div class="auth-step hidden" data-step="code">
+          <label>
+            <span>Verification code</span>
+            <input type="text" id="verificationCode" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code">
+          </label>
+          <div class="auth-inline-actions">
+            <button class="button primary auth-submit" type="button" id="verifyCodeBtn">Verify code</button>
+            <button class="button secondary" type="button" id="resendCodeBtn">Resend</button>
+            <button class="button secondary" type="button" id="startOverBtn">Change Email</button>
+          </div>
+        </div>
+
+        <div class="auth-step hidden" data-step="password">
+          <label>
+            <span>Create password</span>
+            <input type="password" id="signupPassword" autocomplete="new-password" placeholder="Minimum 6 characters">
+          </label>
+          <label>
+            <span>Confirm password</span>
+            <input type="password" id="signupPasswordConfirm" autocomplete="new-password" placeholder="Re-enter your password">
+          </label>
+          <button class="button primary auth-submit" type="button" id="setPasswordBtn">Create account</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.0/leaflet.markercluster.min.js"></script>
+  <!-- Google Maps JS API: replace YOUR_API_KEY with your API key (enable Maps JS API + billing) -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD8aCnXAxDmrcw_nDP8kwa15qS7Yrv_QII&callback=onGoogleMapsApiLoaded"></script>
+  <script src="script.js?v=20260515"></script>
+  <script src="auth.js?v=20260515"></script>
 </body>
 </html>

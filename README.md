@@ -87,13 +87,24 @@ GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 
 ## 💻 How to Run the Application
 
+### ⚠️ Important: Port Issues
+By default, the server runs on port **3000**. If you encounter an error like `EADDRINUSE: address already in use :::3000` when starting the server, it means another program is already using this port.
+**How to fix:**
+1. **Option A (Kill the process using the port):** Open your terminal/command prompt and run:
+   - **Windows & macOS/Linux:** `npx kill-port 3000`
+2. **Option B (Change the port):** Open the `.env` file in the `server` directory and change `PORT=3000` to another number (e.g., `PORT=5000`). Then, restart the server and access the application at `http://localhost:5000`.
+
 ### On Windows
 1. Open Command Prompt or PowerShell.
-2. Navigate to the project folder and into the `server` directory.
+2. Navigate to the project folder and into the `server` directory:
+   ```cmd
+   cd path\to\FarReach-App\server
+   ```
 3. Start the server:
    ```cmd
    npm start
    ```
+   *(If you see a port conflict error, refer to the **Port Issues** section above.)*
 4. Open your web browser and go to: `http://localhost:3000`
 
 ### On macOS / Linux
@@ -107,6 +118,7 @@ GOOGLE_MAPS_API_KEY=your_google_maps_api_key
    npm start
    ```
    *(For development with auto-reload, you can use `npm run dev`)*
+   *(If you see a port conflict error, refer to the **Port Issues** section above.)*
 4. Open your web browser and go to: `http://localhost:3000`
 
 ---

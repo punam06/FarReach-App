@@ -106,14 +106,20 @@
     const API = (window.location.origin === 'null' || window.location.origin.startsWith('file') || window.location.port === '5500' || window.location.port === '5501') ? 'http://127.0.0.1:3000/api' : window.location.origin + '/api';
     let currentUser = null, editRating = 0;
     function checkAuth() {
-      const token = localStorage.getItem('token'), user = localStorage.getItem('user');
-      if (!token || !user) { window.location.href = '/login'; return false; }
-      currentUser = JSON.parse(user);
-      if (currentUser.role === 'admin') { window.location.href = '/admin-dashboard'; return false; }
+      const token = localStorage.getItem('tourismAuthToken'), userStr = localStorage.getItem('tourismAuthUser');
+      if (!token || !userStr) { window.location.href = '/'; return false; }
+      try {
+        currentUser = JSON.parse(userStr);
+        if (currentUser.role === 'admin') { window.location.href = '/admin-dashboard'; return false; }
+      } catch (e) {
+        window.location.href = '/';
+        return false;
+      }
       return true;
     }
-    function getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }; }
-    function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }
+
+    function getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('tourismAuthToken') }; }
+    function logout() { localStorage.removeItem('tourismAuthToken'); localStorage.removeItem('tourismAuthUser'); window.location.href = '/'; }
     document.querySelectorAll('.sidebar-link[data-page]').forEach(link => {
       link.addEventListener('click', () => {
         document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
@@ -141,7 +147,24 @@
         else se.innerHTML=data.recentSaved.map(s=>'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #E2E8F0;"><img src="'+spotImage(s.image)+'" style="width:48px;height:48px;object-fit:cover;border-radius:8px;" onerror="this.style.display=\'none\'"><div><div style="font-size:14px;font-weight:500;">'+s.name+'</div><div style="font-size:12px;color:#718096;">'+(s.district_name||s.division_name||'')+'</div></div></div>').join('');
         const re=document.getElementById('home-reviews');
         if(data.recentReviews.length===0) re.innerHTML='<div class="empty-state"><i class="fas fa-star"></i><h4>No reviews yet</h4><p>Share your travel experiences!</p></div>';
-        else re.innerHTML=data.recentReviews.map(r=>'<div class="review-item"><div class="review-item-header"><span class="review-item-spot">'+r.spot_name+'</span><span class="review-item-date">'+new Date(r.created_at).toLocaleDateString()+'</span></div><div class="review-item-stars">'+starsHTML(r.rating)+'</div><div class="review-item-text">'+(r.text||'No comment')+'</div></div>').join('');
+        else re.innerHTML=data.recentReviews.map(r=>{
+          const replyHtml = r.admin_reply ? `
+            <div style="margin-top:8px; padding:8px; background:rgba(80, 216, 120, 0.05); border-radius:6px; border-left:3px solid var(--primary); font-size:12px;">
+              <strong style="color:var(--primary);">Admin Reply:</strong> ${r.admin_reply}
+            </div>
+          ` : '';
+          return `
+            <div class="review-item">
+              <div class="review-item-header">
+                <span class="review-item-spot">${r.spot_name}</span>
+                <span class="review-item-date">${new Date(r.created_at).toLocaleDateString()}</span>
+              </div>
+              <div class="review-item-stars">${starsHTML(r.rating)}</div>
+              <div class="review-item-text">${r.text||'No comment'}</div>
+              ${replyHtml}
+            </div>
+          `;
+        }).join('');
       } catch(e){showToast('Failed to load dashboard','error');}
     }
     async function loadSavedSpots() {
@@ -160,7 +183,30 @@
         const data=await res.json();
         const l=document.getElementById('reviews-list');
         if(data.reviews.length===0) l.innerHTML='<div class="empty-state"><i class="fas fa-star"></i><h4>No reviews yet</h4></div>';
-        else l.innerHTML=data.reviews.map(r=>'<div class="review-item"><div class="review-item-header"><span class="review-item-spot"><i class="fas fa-map-marker-alt" style="color:var(--primary);margin-right:4px;"></i>'+r.spot_name+'</span><span class="review-item-date">'+new Date(r.created_at).toLocaleDateString()+'</span></div><div class="review-item-stars">'+starsHTML(r.rating)+'</div><div class="review-item-text">'+(r.text||'No comment')+'</div><div class="review-item-actions"><button class="btn-sm edit" onclick="openEditReview('+r.id+','+r.rating+',\''+(r.text||'').replace(/'/g,"\\'")+'\')"><i class="fas fa-edit"></i> Edit</button><button class="btn-sm delete" onclick="deleteReview('+r.id+')"><i class="fas fa-trash"></i> Delete</button></div></div>').join('');
+        else l.innerHTML=data.reviews.map(r=>{
+          const replyHtml = r.admin_reply ? `
+            <div class="admin-reply" style="margin-top:12px; padding:12px; background:rgba(80, 216, 120, 0.08); border-radius:10px; border-left:4px solid var(--primary);">
+              <div style="font-weight:700; font-size:13px; color:var(--primary); margin-bottom:4px;"><i class="fas fa-reply"></i> Admin Response</div>
+              <div style="font-size:14px; line-height:1.5;">${r.admin_reply}</div>
+              ${r.reply_at ? `<div style="font-size:11px; color:#a0aec0; margin-top:6px;">Replied on ${new Date(r.reply_at).toLocaleDateString()}</div>` : ''}
+            </div>
+          ` : '';
+          return `
+            <div class="review-item">
+              <div class="review-item-header">
+                <span class="review-item-spot"><i class="fas fa-map-marker-alt" style="color:var(--primary);margin-right:4px;"></i>${r.spot_name}</span>
+                <span class="review-item-date">${new Date(r.created_at).toLocaleDateString()}</span>
+              </div>
+              <div class="review-item-stars">${starsHTML(r.rating)}</div>
+              <div class="review-item-text">${r.text||'No comment'}</div>
+              ${replyHtml}
+              <div class="review-item-actions">
+                <button class="btn-sm edit" onclick="openEditReview(${r.id},${r.rating},'${(r.text||'').replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i> Edit</button>
+                <button class="btn-sm delete" onclick="deleteReview(${r.id})"><i class="fas fa-trash"></i> Delete</button>
+              </div>
+            </div>
+          `;
+        }).join('');
       } catch(e){showToast('Failed to load','error');}
     }
     function openEditReview(id,rating,text){document.getElementById('edit-review-id').value=id;document.getElementById('edit-review-text').value=text;editRating=rating;updateStarDisplay();document.getElementById('edit-review-modal').classList.add('active');}
