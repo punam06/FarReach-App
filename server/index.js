@@ -90,7 +90,7 @@ function createMockCurrent(district) {
     mock: true,
     name: district,
     dt: now,
-    main: { temp: 29, feels_like: 31, temp_min: 28, temp_max: 30, humidity: 78 },
+    main: { temp: 25, feels_like: 26, temp_min: 24, temp_max: 26, humidity: 78 },
     weather: [{ id: 800, main: 'Clear', description: 'clear sky', icon: '01d' }],
     wind: { speed: 3.5 },
   };
@@ -109,7 +109,8 @@ function createMockForecast(district, date) {
     if (h === 6 || h === 18) { main = 'Clouds'; desc = 'scattered clouds'; pop = 15; }
     if (h === 21 || h === 0) { main = 'Rain'; desc = 'light rain'; pop = 55; }
     if (h === 9) { main = 'Clouds'; desc = 'broken clouds'; pop = 20; }
-    const temp = 26 + (h >= 12 && h <= 15 ? 4 : 0) + (h >= 0 && h <= 6 ? -2 : 0);
+    const isDay = h >= 10 && h <= 16;
+    const temp = isDay ? 26 : 25; // max 2 unit difference, 25 or 26.
     const wind = { speed: 3 + (h >= 12 ? 1 : 0) };
     slots.push({ dt, main: { temp }, weather: [{ main, description: desc }], pop: pop / 100, wind });
   }
@@ -244,14 +245,23 @@ function summarizeForecast(data, date) {
   const bestWeather = bestSlot?.slot?.weather?.[0] || {};
   const safety = getSafetyVerdict({ dominantMain, rainChanceMax, tempMin, tempMax, windMax });
 
+  let finalTempMax = Number.isFinite(tempMax) ? Math.round(tempMax) : null;
+  let finalTempMin = Number.isFinite(tempMin) ? Math.round(tempMin) : null;
+  
+  if (finalTempMax !== null && finalTempMin !== null) {
+    if (finalTempMax - finalTempMin > 2) {
+      finalTempMin = finalTempMax - 2;
+    }
+  }
+
   return {
     available: true,
     date,
     icon: getWeatherIcon(dominantMain),
     dominantMain,
     dominantDescription: (bestWeather.description || dominantMain).toString(),
-    tempMin: Number.isFinite(tempMin) ? Math.round(tempMin) : null,
-    tempMax: Number.isFinite(tempMax) ? Math.round(tempMax) : null,
+    tempMin: finalTempMin,
+    tempMax: finalTempMax,
     windMax,
     rainChanceMax,
     bestWindow: bestSlot ? formatHourLabel(bestSlot.localHour) : null,

@@ -371,13 +371,17 @@ async function fetchDestinationPageForecast(district, dateVal) {
 
 
 
-function displayDestinationDetailMap(district) {
+async function displayDestinationDetailMap(district) {
   const container = document.getElementById('destDetailMap');
   const mapLabel = document.getElementById('destMapLocationName');
   if (!container) return;
 
+  const placeIndex = getDestinationFromURL();
+  const place = spots[placeIndex];
+  const spotName = place ? place[0] : district;
+
   if (mapLabel) {
-    mapLabel.textContent = district;
+    mapLabel.textContent = spotName;
   }
 
   // Destroy existing map if any
@@ -388,21 +392,39 @@ function displayDestinationDetailMap(district) {
     window.destPageMapInstance = null;
   }
 
-  container.innerHTML = '';
-  const place = spots[getDestinationFromURL()];
-  const coords = (place && place[3]) || districtCoords[district] || [23.685, 90.3563];
+  container.innerHTML = '<div style="padding:20px;">Locating exact spot...</div>';
 
+  let coords = (place && place[3]) || null;
+  
+  if (!coords) {
+    try {
+      const q = encodeURIComponent(`${spotName} ${district} Bangladesh`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      }
+    } catch (e) {
+      console.warn("Geocoding failed", e);
+    }
+  }
+
+  // Fallback to district coords if all else fails
+  if (!coords) {
+    coords = districtCoords[district] || [23.685, 90.3563];
+  }
+
+  container.innerHTML = '';
 
   // Try Google Maps first
   if (window.google && window.google.maps) {
     const mapInstance = new google.maps.Map(container, {
       center: { lat: coords[0], lng: coords[1] },
-      zoom: 14, // Increased zoom for better clarity
+      zoom: 17, // Much closer zoom to focus exactly on the spot
       mapTypeControl: true,
       streetViewControl: true,
       fullscreenControl: true
     });
-
 
     const gLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(district + ' Bangladesh')}`;
     const externalLinkEl = document.getElementById('externalMapLink');
@@ -411,13 +433,13 @@ function displayDestinationDetailMap(district) {
     const marker = new google.maps.Marker({
       position: { lat: coords[0], lng: coords[1] },
       map: mapInstance,
-      title: district
+      title: spotName
     });
 
     const info = new google.maps.InfoWindow({
       content: `
         <div style="color:#333; padding:5px;">
-          <strong style="display:block; font-size:1rem; margin-bottom:4px;">${district}</strong>
+          <strong style="display:block; font-size:1rem; margin-bottom:4px;">${spotName}</strong>
           <a href="${gLink}" target="_blank" style="color:#4285F4; font-weight:600; text-decoration:none;">View on Google Maps</a>
         </div>
       `
@@ -433,7 +455,7 @@ function displayDestinationDetailMap(district) {
   }
 
   // Leaflet fallback
-  const mapInstance = L.map(container).setView(coords, 10);
+  const mapInstance = L.map(container).setView(coords, 16);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
@@ -447,7 +469,7 @@ function displayDestinationDetailMap(district) {
     weight: 3,
     opacity: 1,
     fillOpacity: 0.9,
-  }).addTo(mapInstance).bindPopup(`<strong>${district}</strong><br>Destination Location`);
+  }).addTo(mapInstance).bindPopup(`<strong>${spotName}</strong><br>Destination Location`);
 
   window.destPageMapInstance = mapInstance;
 

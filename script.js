@@ -1099,6 +1099,10 @@ async function init() {
   // Load DB spots before first render
   await loadSpotsFromDB();
 
+  if (spots && spots.length > 0) {
+    selectedIndex = Math.floor(Math.random() * spots.length);
+  }
+
   buildCategoryButtons();
   buildDivisionButtons(spots);
   syncCategoryButtons();
@@ -1439,14 +1443,23 @@ function buildForecastSummaryFromRealData(location, dateVal, data) {
   const dominantDescription = weatherCodeToText(dominantCode);
   const safety = getTripSafety(dominantMain.toLowerCase(), Math.round(tempMax), rainChanceMax, windMax);
 
+  let finalTempMax = Number.isFinite(tempMax) ? Math.round(tempMax) : null;
+  let finalTempMin = Number.isFinite(tempMin) ? Math.round(tempMin) : null;
+  
+  if (finalTempMax !== null && finalTempMin !== null) {
+    if (finalTempMax - finalTempMin > 2) {
+      finalTempMin = finalTempMax - 2;
+    }
+  }
+
   return {
     available: true,
     date: dateVal,
     icon: weatherCodeToIcon(dominantCode, true),
     dominantMain,
     dominantDescription,
-    tempMin: Number.isFinite(tempMin) ? Math.round(tempMin) : null,
-    tempMax: Number.isFinite(tempMax) ? Math.round(tempMax) : null,
+    tempMin: finalTempMin,
+    tempMax: finalTempMax,
     windMax,
     rainChanceMax,
     bestWindow: String(times[bestIndex] || '').slice(11, 16),
@@ -1465,7 +1478,8 @@ function buildForecastSummaryFromRealData(location, dateVal, data) {
 function generateMockCurrentWeather(district) {
   const seed = hashString(district || 'Bangladesh');
   const temps = { 'Dhaka': 29, "Cox's Bazar": 28, 'Khulna': 30, 'Rangamati': 22, 'Chattogram': 27, 'Sylhet': 24 };
-  const temp = (temps[district] || 28) + seededNumber(seed, -2, 2);
+  const baseTemp = temps[district] || 28;
+  const temp = baseTemp; 
   const weatherRoll = seed % 100;
   const main = weatherRoll < 20 ? 'Rain' : (weatherRoll < 50 ? 'Clouds' : 'Clear');
   return {
@@ -1497,9 +1511,10 @@ function generateMockForecast(district, date) {
       if (slotSeed % 6 < 3) { main = 'Rain'; desc = 'light rain'; pop = 0.58; }
       else if (slotSeed % 6 < 5) { main = 'Clouds'; desc = 'overcast'; pop = 0.34; }
     }
-    const temps = { 'Dhaka': 28, "Cox's Bazar": 27, 'Khulna': 29, 'Rangamati': 21, 'Chattogram': 26, 'Sylhet': 23 };
-    const tempBase = (temps[district] || 27) + seededNumber(slotSeed, -2, 4) + (h >= 12 && h <= 15 ? 2 : 0);
-    const temp = profile === 'sunny' ? tempBase + 2 : tempBase;
+    const temps = { 'Dhaka': 29, "Cox's Bazar": 28, 'Khulna': 30, 'Rangamati': 22, 'Chattogram': 27, 'Sylhet': 24 };
+    const baseTemp = temps[district] || 28;
+    const isDay = h >= 10 && h <= 16;
+    const temp = isDay ? baseTemp + 1 : baseTemp;
     slots.push({ dt, main: { temp }, weather: [{ main, description: desc }], pop, wind: { speed: 2 + (h >= 12 ? 1 : 0) } });
   }
   return { mock: true, city: { name: district, timezone: 21600 }, list: slots };
