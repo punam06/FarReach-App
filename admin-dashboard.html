@@ -355,8 +355,8 @@
     }
 
     async function deleteSpot(id) {
-      if (!confirm('Delete this spot?')) return;
-      try { var res = await fetch(API + '/admin/spots/' + id, { method: 'DELETE', headers: getHeaders() }); if (res.ok) { showToast('Spot deleted', 'success'); loadSpots(); loadStats(); } else showToast('Failed', 'error'); } catch (e) { showToast('Error', 'error'); }
+      if (!confirm('Warning: Are you sure you want to permanently delete this tourist spot? This action cannot be undone and will also delete all associated bookings and reviews!')) return;
+      try { var res = await fetch(API + '/admin/spots/' + id, { method: 'DELETE', headers: getHeaders() }); if (res.ok) { showToast('Spot permanently deleted', 'success'); loadSpots(); loadStats(); } else showToast('Failed to delete spot', 'error'); } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
     // DIVISIONS & DISTRICTS
@@ -506,8 +506,8 @@
     }
 
     async function deleteGuide(id) {
-      if (!confirm('Delete this guide?')) return;
-      try { var res = await fetch(API + '/admin/guides/' + id, { method: 'DELETE', headers: getHeaders() }); if (res.ok) { showToast('Deleted', 'success'); loadGuides(); loadStats(); } else showToast('Failed', 'error'); } catch (e) {}
+      if (!confirm('Are you sure you want to permanently delete this guide? This action cannot be undone.')) return;
+      try { var res = await fetch(API + '/admin/guides/' + id, { method: 'DELETE', headers: getHeaders() }); if (res.ok) { showToast('Guide permanently deleted', 'success'); loadGuides(); loadStats(); } else showToast('Failed to delete guide', 'error'); } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
     // USERS

@@ -1307,6 +1307,12 @@ app.delete('/api/user/saved-spots/:id', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Delete failed' }); }
 });
 
+const seedDatabase = require('./seed');
+
 app.listen(PORT, () => {
   console.log(`API server listening on http://localhost:${PORT}`);
+  // Run database synchronization seeder
+  seedDatabase().catch(err => {
+    console.error('[startup] Failed to seed database:', err);
+  });
 });
