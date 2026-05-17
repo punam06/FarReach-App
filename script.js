@@ -708,6 +708,9 @@ function setFeatured(place, idxInFiltered) {
   const resultLink = document.getElementById("resultDetailsLink");
   if (featuredLink) featuredLink.href = `destination.html?id=${globalIndex}`;
   if (resultLink) resultLink.href = `destination.html?id=${globalIndex}`;
+
+  // Fetch real-time weather for the excursion route panel
+  fetchWeatherFor(district);
 }
 
 function renderPopularGrid(filtered) {
@@ -1057,18 +1060,24 @@ function starsHTML(r) {
 
 // Fetch current weather from OpenWeather by city/district (Bangladesh assumed)
 async function fetchWeatherFor(district) {
+  const tabIcon = document.getElementById('tabWeatherIcon');
+  const tabTemp = document.getElementById('tabWeatherTemp');
+  const tabDesc = document.getElementById('tabWeatherDesc');
+
   const card = document.getElementById('weatherCard');
   const iconEl = document.getElementById('weatherIcon');
   const tempEl = document.getElementById('weatherTemp');
   const descEl = document.getElementById('weatherDesc');
   const sugEl = document.getElementById('weatherSuggestion');
 
-  if (!card || !tempEl || !descEl || !sugEl || !iconEl) return;
+  if (tabTemp) tabTemp.textContent = 'Loading...';
+  if (tabDesc) tabDesc.textContent = district;
+  if (tabIcon) tabIcon.textContent = '⏳';
 
-  card.style.display = 'block';
-  tempEl.textContent = 'Loading...';
-  descEl.textContent = district;
-  sugEl.textContent = 'Fetching weather...';
+  if (card) card.style.display = 'block';
+  if (tempEl) tempEl.textContent = 'Loading...';
+  if (descEl) descEl.textContent = district;
+  if (sugEl) sugEl.textContent = 'Fetching weather...';
 
   try {
     const weather = await fetchOpenWeatherCurrent(district);
@@ -1076,21 +1085,34 @@ async function fetchWeatherFor(district) {
     const desc = weather.description;
     const main = weather.main;
 
-    tempEl.textContent = `${temp}°C`;
-    descEl.textContent = desc;
-    iconEl.textContent = chooseIcon(main, desc);
+    const iconStr = chooseIcon(main, desc);
+    const suggestion = travelSuggestion(main.toLowerCase(), temp);
 
-    sugEl.textContent = travelSuggestion(main.toLowerCase(), temp);
+    if (tabTemp) tabTemp.textContent = `${temp}°C`;
+    if (tabDesc) tabDesc.textContent = `${desc.charAt(0).toUpperCase() + desc.slice(1)} — ${suggestion}`;
+    if (tabIcon) tabIcon.textContent = iconStr;
+
+    if (tempEl) tempEl.textContent = `${temp}°C`;
+    if (descEl) descEl.textContent = desc;
+    if (iconEl) iconEl.textContent = iconStr;
+    if (sugEl) sugEl.textContent = suggestion;
   } catch (err) {
     const data = generateMockCurrentWeather(district);
-    const temp = Math.round(data.main?.temp ?? 0);
+    const temp = Math.round(data.main?.temp ?? 28);
     const desc = (data.weather && data.weather[0] && data.weather[0].description) || 'Clear';
-    const main = (data.weather && data.weather[0] && data.weather[0].main) || '';
+    const main = (data.weather && data.weather[0] && data.weather[0].main) || 'Clear';
 
-    tempEl.textContent = temp + '°C';
-    descEl.textContent = desc;
-    iconEl.textContent = chooseIcon(main, desc);
-    sugEl.textContent = `Real-time weather is temporarily unavailable. ${travelSuggestion(main.toLowerCase(), temp)}`;
+    const iconStr = chooseIcon(main, desc);
+    const suggestion = travelSuggestion(main.toLowerCase(), temp);
+
+    if (tabTemp) tabTemp.textContent = `${temp}°C`;
+    if (tabDesc) tabDesc.textContent = `${desc.charAt(0).toUpperCase() + desc.slice(1)} (Real-time weather unavailable)`;
+    if (tabIcon) tabIcon.textContent = iconStr;
+
+    if (tempEl) tempEl.textContent = temp + '°C';
+    if (descEl) descEl.textContent = desc;
+    if (iconEl) iconEl.textContent = iconStr;
+    if (sugEl) sugEl.textContent = `Real-time weather is temporarily unavailable. ${suggestion}`;
   }
 }
 
@@ -1414,7 +1436,7 @@ function forecastSafeClass(summary) {
 
 function renderForecastSummary(summary, district, dateVal) {
   const tempText = summary?.tempMin != null && summary?.tempMax != null
-    ? `${summary.tempMin}°C - ${summary.tempMax}°C`
+    ? `${summary.tempMin} - ${summary.tempMax}°C`
     : '--°C';
   const rainText = summary?.rainChanceMax != null
     ? `Rain chance up to ${summary.rainChanceMax}%`
@@ -1481,7 +1503,7 @@ async function fetchForecastForDate(district, dateVal) {
     }
 
     if (summary?.available) {
-      tempEl.textContent = summary.tempMin != null && summary.tempMax != null ? `${summary.tempMin}°C - ${summary.tempMax}°C` : '--°C';
+      tempEl.textContent = summary.tempMin != null && summary.tempMax != null ? `${summary.tempMin} - ${summary.tempMax}°C` : '--°C';
       descEl.textContent = summary.dominantDescription || summary.dominantMain || 'Conditions';
       iconEl.textContent = summary.icon || '🌤️';
       sugEl.innerHTML = renderForecastSummary(summary, district, dateVal);
@@ -1490,7 +1512,7 @@ async function fetchForecastForDate(district, dateVal) {
   } catch (err) {
     const data = generateMockForecast(district, dateVal);
     const summary = generateMockSummary(district, dateVal, data);
-    tempEl.textContent = summary.tempMin != null && summary.tempMax != null ? `${summary.tempMin}°C - ${summary.tempMax}°C` : '--°C';
+    tempEl.textContent = summary.tempMin != null && summary.tempMax != null ? `${summary.tempMin} - ${summary.tempMax}°C` : '--°C';
     descEl.textContent = summary.dominantDescription || 'Conditions';
     iconEl.textContent = summary.icon || '🌤️';
     sugEl.innerHTML = renderForecastSummary(summary, district, dateVal);
