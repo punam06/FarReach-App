@@ -655,17 +655,31 @@ function updateStats(filtered) {
 
 function setFeatured(place, idxInFiltered) {
   if (!place) {
-    document.getElementById("featuredName").textContent = "No destination found";
-    document.getElementById("featuredDistrict").textContent = "Try another search keyword";
-    document.getElementById("featuredTag").textContent = "Empty";
-    document.getElementById("featuredMeta").textContent = "No category";
-    document.getElementById("resultName").textContent = "No destination selected";
-    document.getElementById("resultDistrict").textContent = "-";
-    document.getElementById("resultCategory").textContent = "-";
-    document.getElementById("resultIndex").textContent = "-";
-    document.getElementById("resultDesc").textContent = "No match found with current filter. Change keyword or select a different category.";
-    document.getElementById("featuredCard").style.backgroundImage = categoryGradients.all;
-    document.getElementById("resultVisual").style.backgroundImage = categoryGradients.all;
+    const featuredName = document.getElementById("featuredName");
+    if (featuredName) featuredName.textContent = "No destination found";
+    const featuredDistrict = document.getElementById("featuredDistrict");
+    if (featuredDistrict) featuredDistrict.textContent = "Try another search keyword";
+    const featuredTag = document.getElementById("featuredTag");
+    if (featuredTag) featuredTag.textContent = "Empty";
+    const featuredMeta = document.getElementById("featuredMeta");
+    if (featuredMeta) featuredMeta.textContent = "No category";
+    
+    const resultName = document.getElementById("resultName");
+    if (resultName) resultName.textContent = "No destination selected";
+    const resultDistrict = document.getElementById("resultDistrict");
+    if (resultDistrict) resultDistrict.textContent = "-";
+    const resultCategory = document.getElementById("resultCategory");
+    if (resultCategory) resultCategory.textContent = "-";
+    const resultIndex = document.getElementById("resultIndex");
+    if (resultIndex) resultIndex.textContent = "-";
+    const resultDesc = document.getElementById("resultDesc");
+    if (resultDesc) resultDesc.textContent = "No match found with current filter. Change keyword or select a different category.";
+    
+    const featuredCard = document.getElementById("featuredCard");
+    if (featuredCard) featuredCard.style.backgroundImage = categoryGradients.all;
+    const resultVisual = document.getElementById("resultVisual");
+    if (resultVisual) resultVisual.style.backgroundImage = categoryGradients.all;
+    
     const featuredLink = document.getElementById("featuredDetailsLink");
     const resultLink = document.getElementById("resultDetailsLink");
     if (featuredLink) featuredLink.href = "#";
@@ -676,14 +690,21 @@ function setFeatured(place, idxInFiltered) {
   const [name, district, cat] = place;
   const gradient = getSpotGradient(place);
 
-  document.getElementById("featuredName").textContent = name;
-  document.getElementById("featuredDistrict").textContent = district;
-  document.getElementById("featuredTag").textContent = cats[cat];
-  document.getElementById("featuredMeta").textContent = "#" + (spots.indexOf(place) + 1) + " in database";
+  const featuredName = document.getElementById("featuredName");
+  if (featuredName) featuredName.textContent = name;
+  const featuredDistrict = document.getElementById("featuredDistrict");
+  if (featuredDistrict) featuredDistrict.textContent = district;
+  const featuredTag = document.getElementById("featuredTag");
+  if (featuredTag) featuredTag.textContent = cats[cat];
+  const featuredMeta = document.getElementById("featuredMeta");
+  if (featuredMeta) featuredMeta.textContent = "#" + (spots.indexOf(place) + 1) + " in database";
 
-  document.getElementById("resultName").textContent = name;
-  document.getElementById("resultDistrict").textContent = district;
-  document.getElementById("resultCategory").textContent = cats[cat];
+  const resultName = document.getElementById("resultName");
+  if (resultName) resultName.textContent = name;
+  const resultDistrict = document.getElementById("resultDistrict");
+  if (resultDistrict) resultDistrict.textContent = district;
+  const resultCategory = document.getElementById("resultCategory");
+  if (resultCategory) resultCategory.textContent = cats[cat];
   
   const p = getSpotFilterProfile(place);
   const budgetPill = document.getElementById("resultBudgetPill");
@@ -695,12 +716,16 @@ function setFeatured(place, idxInFiltered) {
   const budgetResult = document.getElementById("budgetResult");
   if (budgetResult) budgetResult.innerHTML = 'Adjust travelers/nights and click calculate.';
 
-  loadRouteOptions(district);
+  const routeOptions = document.getElementById("routeOptions");
+  if (routeOptions) loadRouteOptions(district);
   
-  document.getElementById("resultDesc").textContent = name + " is a " + cats[cat].toLowerCase() + " destination in " + district + ". Explore travel options, accommodation, and real-time weather below.";
+  const resultDesc = document.getElementById("resultDesc");
+  if (resultDesc) resultDesc.textContent = name + " is a " + cats[cat].toLowerCase() + " destination in " + district + ". Explore travel options, accommodation, and real-time weather below.";
 
-  document.getElementById("featuredCard").style.backgroundImage = gradient;
-  document.getElementById("resultVisual").style.backgroundImage = gradient;
+  const featuredCard = document.getElementById("featuredCard");
+  if (featuredCard) featuredCard.style.backgroundImage = gradient;
+  const resultVisual = document.getElementById("resultVisual");
+  if (resultVisual) resultVisual.style.backgroundImage = gradient;
 
   // Update links to point to the destination page
   const globalIndex = spots.indexOf(place);
@@ -727,13 +752,7 @@ function renderPopularGrid(filtered) {
       '<p class="card-meta">District: ' + district + '</p>';
 
     card.onclick = () => {
-      if (selectedIndex === idx) {
-        window.location.href = `destination.html?id=${spots.indexOf(place)}`;
-      } else {
-        selectedIndex = idx;
-        render();
-        document.getElementById("resultCard").scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      window.location.href = `destination.html?id=${spots.indexOf(place)}`;
     };
 
     grid.appendChild(card);
@@ -952,17 +971,24 @@ async function loadSpotsFromDB() {
         };
       }
 
-      // Add spot if not already in the hardcoded list
-      if (!existingNames.has(name.toLowerCase())) {
-        const entry = [name, district, category];
+      // Find or create spot entry to enrich it
+      let entry = spots.find(s => s[0].toLowerCase() === name.toLowerCase());
+      if (!entry) {
+        entry = [name, district, category];
         if (coords) entry.push(coords);
         spots.push(entry);
         existingNames.add(name.toLowerCase());
+      }
 
-        // Add image mapping if available
-        if (dbSpot.image) {
-          spotImages[name] = dbSpot.image.startsWith('http') ? dbSpot.image : 'spot-pictures/' + dbSpot.image;
-        }
+      // Attach DB-specific properties to the spot entry
+      entry.dbId = dbSpot.id;
+      entry.description = dbSpot.description || '';
+      entry.history = dbSpot.history || '';
+      entry.division = dbSpot.division_name || '';
+      entry.budgetCategory = dbSpot.budget_category || '';
+      if (dbSpot.image) {
+        entry.image = dbSpot.image.startsWith('http') ? dbSpot.image : 'spot-pictures/' + dbSpot.image;
+        spotImages[name] = entry.image;
       }
     });
   } catch (e) {

@@ -436,7 +436,7 @@
     try {
       const data = await request('/api/auth/signup/set-password', {
         method: 'POST',
-        body: JSON.stringify({ email, password, confirmPassword }),
+        body: JSON.stringify({ email, password, confirmPassword, name: state.pendingName }),
       });
 
       saveSession(data.token, data.user);

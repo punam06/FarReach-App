@@ -836,7 +836,7 @@ app.get('/api/spots/lookup', async (req, res) => {
 app.get('/api/spots', async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT s.id, s.name, s.category, s.description, s.image, s.budget_category,
+      SELECT s.id, s.name, s.category, s.description, s.history, s.image, s.budget_category,
              s.latitude, s.longitude,
              d.name as district_name, dv.name as division_name
       FROM spots s
@@ -1155,28 +1155,20 @@ app.get('/api/user/saved-spots', requireAuth, async (req, res) => {
 app.get('/api/user/guides', requireAuth, async (req, res) => {
   try {
     const user = await currentUserFromRequest(req);
-    // First try: guides for spots the user has saved
+    // Return guides for spots the user has saved (robust against duplicate spots with slightly different names)
     const [savedGuides] = await db.query(`
-      SELECT g.*, s.name as spot_name, 1 as is_saved_spot
+      SELECT DISTINCT g.*, s.name as spot_name, 1 as is_saved_spot
       FROM guides g 
-      LEFT JOIN spots s ON g.spot_id = s.id
-      JOIN saved_spots ss ON g.spot_id = ss.spot_id 
-      WHERE ss.user_id = ?
+      JOIN spots s ON g.spot_id = s.id
+      JOIN saved_spots ss ON ss.user_id = ?
+      JOIN spots s2 ON ss.spot_id = s2.id
+      WHERE g.spot_id = ss.spot_id
+         OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(s.name, ' ', ''), 'Beach', ''), 'Sea', ''), 'Island', '')) = 
+            LOWER(REPLACE(REPLACE(REPLACE(REPLACE(s2.name, ' ', ''), 'Beach', ''), 'Sea', ''), 'Island', ''))
       ORDER BY g.rating DESC
     `, [user.id]);
 
-    if (savedGuides.length > 0) {
-      return res.json({ guides: savedGuides });
-    }
-
-    // Fallback: show all available guides so the directory is never empty
-    const [allGuides] = await db.query(`
-      SELECT g.*, s.name as spot_name, 0 as is_saved_spot
-      FROM guides g 
-      LEFT JOIN spots s ON g.spot_id = s.id
-      ORDER BY g.rating DESC
-    `);
-    res.json({ guides: allGuides });
+    res.json({ guides: savedGuides });
   } catch (err) { res.status(500).json({ error: 'Guides failed' }); }
 });
 
@@ -1198,7 +1190,7 @@ app.get('/api/user/bookings', requireAuth, async (req, res) => {
 app.post('/api/bookings', requireAuth, async (req, res) => {
   try {
     const user = await currentUserFromRequest(req);
-    const { spot_id, booking_date, persons } = req.body;
+    const { spot_id, booking_date, persons, price: customPrice } = req.body;
 
     if (!spot_id) return res.status(400).json({ error: 'spot_id is required' });
     if (!booking_date) return res.status(400).json({ error: 'booking_date is required' });
@@ -1221,7 +1213,7 @@ app.post('/api/bookings', requireAuth, async (req, res) => {
 
     // Calculate estimated price based on budget category and persons
     const baseRate = spot.budget_category === 'High' ? 5000 : (spot.budget_category === 'Mid' ? 3750 : 2500);
-    const price = baseRate * numPersons;
+    const price = parseInt(customPrice) || (baseRate * numPersons);
 
     const [result] = await db.query(
       "INSERT INTO bookings (user_id, spot_id, type, target_name, price, booking_date, status) VALUES (?, ?, 'package', ?, ?, ?, 'confirmed')",

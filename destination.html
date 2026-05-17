@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.0/MarkerCluster.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.0/MarkerCluster.Default.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -55,6 +56,44 @@
             </div>
           </div>
         </article>
+      </section>
+
+      <!-- About & History Section -->
+      <section class="dest-page-section" id="aboutSection" style="margin-top:20px;">
+        <header class="section-heading">
+          <h2>📖 About & History</h2>
+          <p>Discover the background, culture, and history of this destination</p>
+        </header>
+        <div class="dest-page-content" style="display:grid; grid-template-columns: 2fr 1fr; gap:30px; margin-top:20px;">
+          <!-- Description & History -->
+          <div class="about-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:24px; border-radius:16px;">
+            <h3 style="font-size:1.25rem; color:#a9e8bb; margin-bottom:12px; display:flex; align-items:center; gap:8px;"><i class="fas fa-info-circle"></i> Destination Overview</h3>
+            <p id="destDetailDescription" style="line-height:1.6; color:var(--text); font-size:0.95rem; margin-bottom:20px;">Loading overview...</p>
+            
+            <h3 style="font-size:1.25rem; color:#a9e8bb; margin-bottom:12px; margin-top:24px; display:flex; align-items:center; gap:8px;"><i class="fas fa-hourglass-half"></i> Historical Background</h3>
+            <p id="destDetailHistory" style="line-height:1.6; color:var(--text); font-size:0.95rem;">Loading history...</p>
+          </div>
+          <!-- Quick Facts -->
+          <div class="facts-card" style="background:rgba(169,232,187,0.05); border:1px solid rgba(169,232,187,0.15); padding:24px; border-radius:16px; display:flex; flex-direction:column; gap:16px; align-self:start;">
+            <h3 style="font-size:1.15rem; color:#a9e8bb; margin-bottom:4px; display:flex; align-items:center; gap:8px;"><i class="fas fa-bolt"></i> Quick Facts</h3>
+            <div>
+              <span style="font-size:0.8rem; color:var(--muted); display:block; text-transform:uppercase; letter-spacing:0.5px;">Location</span>
+              <strong id="factDistrict" style="font-size:1rem; color:var(--text);">--</strong>
+            </div>
+            <div>
+              <span style="font-size:0.8rem; color:var(--muted); display:block; text-transform:uppercase; letter-spacing:0.5px;">Division</span>
+              <strong id="factDivision" style="font-size:1rem; color:var(--text);">--</strong>
+            </div>
+            <div>
+              <span style="font-size:0.8rem; color:var(--muted); display:block; text-transform:uppercase; letter-spacing:0.5px;">Budget Tier</span>
+              <strong id="factBudget" style="font-size:1rem; color:var(--text); text-transform:capitalize;">--</strong>
+            </div>
+            <div>
+              <span style="font-size:0.8rem; color:var(--muted); display:block; text-transform:uppercase; letter-spacing:0.5px;">Category</span>
+              <strong id="factCategory" style="font-size:1rem; color:var(--text);">--</strong>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- Weather Section -->
@@ -123,12 +162,33 @@
           <p>Find places to stay near this destination</p>
         </header>
         <div class="dest-page-content">
-          <div id="destHotelsContent" class="dest-hotels-content">
-            <div class="hotel-placeholder">
-              <p>Popular accommodation options in this area:</p>
-              <ul id="hotelList">
-                <li>Searching for nearby hotels...</li>
-              </ul>
+          <div id="destHotelsContent" class="dest-hotels-content" style="width: 100%;">
+            <div class="hotel-section" style="width: 100%;">
+              <h4>Find Accommodations</h4>
+              <div class="booking-form" style="display:grid; gap:10px; margin-bottom:20px; max-width: 500px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                  <div>
+                    <label style="font-size:0.85rem; color:var(--muted); display:block; margin-bottom:4px;">Check-in Date</label>
+                    <input type="date" id="hotelCheckin" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:var(--text); font-size:0.95rem;">
+                  </div>
+                  <div>
+                    <label style="font-size:0.85rem; color:var(--muted); display:block; margin-bottom:4px;">Check-out Date</label>
+                    <input type="date" id="hotelCheckout" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:var(--text); font-size:0.95rem;">
+                  </div>
+                </div>
+                <button class="button primary" id="searchHotelsBtn" style="padding:12px; font-weight:600;">Search Hotels</button>
+              </div>
+              <div id="hotelResultsList" style="margin-top: 15px;"></div>
+
+              <div class="booking-portals" style="margin-top:24px;">
+                <h5 style="margin-bottom: 10px; font-size: 1.05rem;">Direct Booking Portals</h5>
+                <div class="booking-buttons" style="display:flex; flex-wrap:wrap; gap:10px;">
+                  <a href="https://hotel.com.bd" target="_blank" class="button secondary booking-btn" style="font-size:0.85rem; padding:8px 16px;">Hotel.com.bd</a>
+                  <a href="https://gozayan.com/hotel" target="_blank" class="button secondary booking-btn" style="font-size:0.85rem; padding:8px 16px;">GoZayan</a>
+                  <a href="https://careflybd.com/hotel-booking/" target="_blank" class="button secondary booking-btn" style="font-size:0.85rem; padding:8px 16px;">Boknow</a>
+                  <a href="https://hotels.gov.bd" target="_blank" class="button secondary booking-btn" style="font-size:0.85rem; padding:8px 16px;">Parjatan (Official)</a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -167,6 +227,9 @@
                     <strong id="bookingPrice" style="color:#a9e8bb; font-size:1.2rem;">৳ 2,500</strong>
                   </div>
                   <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Per person: <span id="bookingPricePerPerson">৳ 2,500</span></div>
+                  <div id="bookingEstimateDetails" style="font-size:0.78rem; color:var(--muted); margin-top:8px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px; line-height:1.35;">
+                    Please configure options in the Trip Budget Calculator.
+                  </div>
                 </div>
                 <button type="button" id="confirmBookingBtn" class="button primary" style="width:100%; margin-top:14px; padding:14px; font-size:1rem; font-weight:600;">
                   ✅ Confirm Booking
@@ -363,10 +426,9 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.0/leaflet.markercluster.min.js"></script>
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD8aCnXAxDmrcw_nDP8kwa15qS7Yrv_QII&callback=onGoogleMapsApiLoaded"></script>
   <script src="script.js"></script>
-  <script src="destination.js"></script>
-<script src="auth.js"></script>
+  <script src="destination-init.js"></script>
+  <script src="auth.js"></script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD8aCnXAxDmrcw_nDP8kwa15qS7Yrv_QII&callback=onGoogleMapsApiLoaded"></script>
 </body>
 </html>
- 

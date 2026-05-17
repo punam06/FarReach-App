@@ -1,12 +1,24 @@
 // destination.js - Handles the destination detail page
+console.log('[destination.js] Script is loading...');
+window.__destination_js_loading = true;
 
+const API_BASE_URL = window.APP_API_BASE_URL || (window.location.origin === 'null' || window.location.origin.startsWith('file') || window.location.port === '5500' || window.location.port === '5501') ? 'http://127.0.0.1:3000' : window.location.origin;
+window.__destination_js_api_url_set = true;
+console.log('[destination.js] API_BASE_URL set to:', API_BASE_URL);
 
 let currentReviewRating = 0;
+// Defensive Google Maps callback
 window.onGoogleMapsApiLoaded = () => {
-  const destIndex = getDestinationFromURL();
-  const district = spots[destIndex]?.[1];
-  if (district) {
-    displayDestinationDetailMap(district);
+  try {
+    if (typeof getDestinationFromURL === 'function' && typeof displayDestinationDetailMap === 'function') {
+      const destIndex = getDestinationFromURL();
+      const district = destIndex !== null && spots && spots[destIndex] ? spots[destIndex][1] : null;
+      if (district) {
+        displayDestinationDetailMap(district);
+      }
+    }
+  } catch (err) {
+    console.warn('Google Maps callback error:', err.message);
   }
 };
 
@@ -15,7 +27,10 @@ let siteContentCache = null;
 // Get destination index from URL parameter
 function getDestinationFromURL() {
   const params = new URLSearchParams(window.location.search);
-  return params.get('id');
+  const id = params.get('id');
+  if (id === null || id === undefined || id === '') return null;
+  const parsed = parseInt(id, 10);
+  return isNaN(parsed) ? null : parsed;
 }
 
 // Initialize destination page
@@ -24,7 +39,7 @@ async function initDestinationPage() {
   await loadSiteContent();
   const destIndex = getDestinationFromURL();
   
-  if (!destIndex || destIndex < 0 || destIndex >= spots.length) {
+  if (destIndex === null || destIndex < 0 || destIndex >= spots.length) {
     showError('Destination not found. Redirecting to home...');
     setTimeout(() => window.location.href = 'index.html', 2000);
     return;
@@ -35,6 +50,7 @@ async function initDestinationPage() {
 
   // Display hero section
   displayDestinationHero(place, destIndex);
+  displayDestinationAboutSection(place);
 
   // Display all sections
   displayDestinationCurrentWeather(district);
@@ -61,7 +77,7 @@ function escapeHtml(value) {
 async function loadSiteContent() {
   if (siteContentCache) return siteContentCache;
   try {
-    const response = await fetch('/api/site-content');
+    const response = await fetch(`${API_BASE_URL}/api/site-content`);
     const data = await response.json().catch(() => ({}));
     if (response.ok && data?.content) {
       siteContentCache = data.content;
@@ -98,9 +114,43 @@ function displayDestinationHero(place, index) {
   document.getElementById('destHeroBadge').textContent = cats[category];
   document.getElementById('destHeroIndex').textContent = `#${index + 1}`;
   document.getElementById('destHeroCategory').textContent = cats[category];
-  document.getElementById('destHeroVisual').style.backgroundImage = gradient;
-  document.getElementById('destHeroDescription').textContent = 
+  
+  if (place.image) {
+    document.getElementById('destHeroVisual').style.backgroundImage = `url('${place.image}')`;
+    document.getElementById('destHeroVisual').style.backgroundSize = 'cover';
+    document.getElementById('destHeroVisual').style.backgroundPosition = 'center';
+  } else {
+    document.getElementById('destHeroVisual').style.backgroundImage = gradient;
+  }
+  
+  document.getElementById('destHeroDescription').textContent = place.description || 
     `${name} is a ${cats[category].toLowerCase()} destination in ${district}. This is one of ${spots.length}+ amazing places across Bangladesh.`;
+}
+
+function displayDestinationAboutSection(place) {
+  const [name, district, category] = place;
+  
+  const descEl = document.getElementById('destDetailDescription');
+  if (descEl) {
+    descEl.textContent = place.description || `${name} is a beautiful ${cats[category].toLowerCase()} spot located in the ${district} district.`;
+  }
+  
+  const histEl = document.getElementById('destDetailHistory');
+  if (histEl) {
+    histEl.textContent = place.history || `${name} has rich cultural and historical significance, offering unique scenic value and travel experiences.`;
+  }
+  
+  const factDistrictEl = document.getElementById('factDistrict');
+  if (factDistrictEl) factDistrictEl.textContent = district;
+  
+  const factDivisionEl = document.getElementById('factDivision');
+  if (factDivisionEl) factDivisionEl.textContent = place.division || 'Unknown';
+  
+  const factBudgetEl = document.getElementById('factBudget');
+  if (factBudgetEl) factBudgetEl.textContent = place.budgetCategory || 'Medium';
+  
+  const factCategoryEl = document.getElementById('factCategory');
+  if (factCategoryEl) factCategoryEl.textContent = cats[category];
 }
 
 async function displayDestinationCurrentWeather(district) {
@@ -587,38 +637,63 @@ function getSeasonalInfo(category) {
 }
 
 async function displayHotels(district) {
-  const container = document.getElementById('hotelList');
-  if (!container) return;
+  const list = document.getElementById('hotelResultsList');
+  if (!list) return;
 
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/hotels/search`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ city: district })
-    });
-    const data = await res.json();
-    
-    if (!data.hotels || data.hotels.length === 0) {
-      container.innerHTML = '<li>Contact local tourism board for hotel recommendations</li>';
-      return;
-    }
+  const checkinInput = document.getElementById('hotelCheckin');
+  const checkoutInput = document.getElementById('hotelCheckout');
+  const searchBtn = document.getElementById('searchHotelsBtn');
 
-    container.innerHTML = data.hotels.map(hotel => `
-      <li style="margin-bottom: 12px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; list-style: none; border: 1px solid rgba(255,255,255,0.05);">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <div style="font-weight: 600; color: var(--accent); margin-bottom: 4px;">🏨 ${hotel.name}</div>
-            <div style="font-size: 0.85rem; color: var(--muted);">Rating: ${hotel.rating}★ | Est. ৳${hotel.price}</div>
-          </div>
-          <a href="${hotel.url}" target="_blank" rel="noopener noreferrer" class="button secondary" style="padding: 6px 12px; font-size: 0.8rem;">
-            Visit Website
-          </a>
-        </div>
-      </li>
-    `).join('');
-  } catch (error) {
-    container.innerHTML = '<li>Error loading hotels. Please try again.</li>';
+  // Set default dates
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+  
+  if (checkinInput && !checkinInput.value) {
+    checkinInput.value = today.toISOString().split('T')[0];
   }
+  if (checkoutInput && !checkoutInput.value) {
+    checkoutInput.value = tomorrow.toISOString().split('T')[0];
+  }
+
+  async function performSearch() {
+    list.innerHTML = '<div style="color:var(--muted); padding:10px 0;">Searching for accommodations...</div>';
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/hotels/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city: district })
+      });
+      const data = await res.json();
+      
+      if (!data.hotels || data.hotels.length === 0) {
+        list.innerHTML = '<div style="color:var(--muted); padding:10px 0;">No specific hotels found in this district.</div>';
+        return;
+      }
+
+      list.innerHTML = data.hotels.map(h => `
+        <div class="hotel-card" style="padding:16px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; margin-bottom:12px; background: rgba(255,255,255,0.02); display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease;">
+          <div>
+            <strong style="color: var(--accent); font-size: 1.05rem;">🏨 ${h.name}</strong>
+            <div style="font-size:0.85rem; color:var(--muted); margin-top:6px;">
+              Rating: ${h.rating}★ | Est. ৳${h.price.toLocaleString()} / night
+            </div>
+          </div>
+          <a href="${h.url}" target="_blank" class="button secondary" style="padding:6px 14px; font-size:0.8rem; border-radius: 8px;">Visit Website</a>
+        </div>
+      `).join('');
+    } catch (e) {
+      list.innerHTML = '<div style="color:#F5A623; padding:10px 0;">Failed to load hotels. Please try again.</div>';
+    }
+  }
+
+  if (searchBtn && !searchBtn.dataset.listenerAdded) {
+    searchBtn.addEventListener('click', performSearch);
+    searchBtn.dataset.listenerAdded = 'true';
+  }
+
+  // Initial search
+  await performSearch();
 }
 
 function displayRelatedDestinations(district, currentIndex) {
@@ -681,7 +756,7 @@ function initReviewSection() {
     if (!reviewList) return;
     reviewList.innerHTML = '<p>Loading reviews...</p>';
     try {
-      const response = await fetch(`/api/reviews?destinationName=${encodeURIComponent(destinationName)}`);
+      const response = await fetch(`${API_BASE_URL}/api/reviews?destinationName=${encodeURIComponent(destinationName)}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not load reviews');
 
@@ -777,7 +852,7 @@ function initReviewSection() {
         return;
       }
 
-      fetch('/api/reviews', {
+      fetch(`${API_BASE_URL}/api/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -810,7 +885,7 @@ function initReviewSection() {
 }
 
 function getBudgetByCategory(category) {
-  const budgets = siteContentCache?.budgets || {
+  const fallbackBudgets = {
     beach: { accommodation: 2500, food: 800, transport: 600 },
     nature: { accommodation: 1800, food: 700, transport: 500 },
     history: { accommodation: 2200, food: 750, transport: 550 },
@@ -821,7 +896,11 @@ function getBudgetByCategory(category) {
     wetland: { accommodation: 1600, food: 700, transport: 500 }
   };
 
-  return budgets[category] || budgets.nature;
+  const budgets = (siteContentCache?.budgets && Object.keys(siteContentCache.budgets).length > 0)
+    ? siteContentCache.budgets
+    : fallbackBudgets;
+
+  return budgets[category] || budgets.nature || fallbackBudgets.nature;
 }
 
 function initBudgetCalculator(category) {
@@ -902,6 +981,30 @@ function initBudgetCalculator(category) {
     if (localTransportEl) localTransportEl.textContent = `৳ ${localTransportPerDay.toLocaleString()}`;
     if (perPersonPerDayEl) perPersonPerDayEl.textContent = `৳ ${perPersonPerDay.toLocaleString()}`;
     if (totalEl) totalEl.textContent = `৳ ${totalCost.toLocaleString()}`;
+
+    // Sync with the booking section
+    window.currentEstimatedBudget = totalCost;
+    const bookingPriceEl = document.getElementById('bookingPrice');
+    const bookingPricePerPersonEl = document.getElementById('bookingPricePerPerson');
+    const bookingPersonsInput = document.getElementById('bookingPersons');
+    const bookingEstimateDetailsEl = document.getElementById('bookingEstimateDetails');
+    
+    if (bookingPriceEl) {
+      bookingPriceEl.textContent = `৳ ${totalCost.toLocaleString()}`;
+    }
+    if (bookingPricePerPersonEl) {
+      bookingPricePerPersonEl.textContent = `৳ ${Math.round(totalCost / persons).toLocaleString()}`;
+    }
+    if (bookingPersonsInput && bookingPersonsInput.value !== String(persons)) {
+      bookingPersonsInput.value = persons;
+    }
+    if (bookingEstimateDetailsEl) {
+      if (origin) {
+        bookingEstimateDetailsEl.innerHTML = `Calculated for <strong>${persons} traveler(s)</strong> from <strong>${origin}</strong> to <strong>${destDistrict}</strong> for <strong>${days} day(s)</strong> via <strong>${transportMode.toUpperCase()}</strong> (Lodging: ${category.toUpperCase()}).`;
+      } else {
+        bookingEstimateDetailsEl.innerHTML = `<span style="color:#F5A623;">⚠️ Select your district in the Budget Calculator above for a complete estimate.</span>`;
+      }
+    }
   }
 
   // Add event listeners
@@ -976,9 +1079,15 @@ function initBookingSection(place, destIndex) {
 
   function updatePrice() {
     const persons = parseInt(personsInput.value) || 1;
-    const total = baseRate * persons;
-    if (priceEl) priceEl.textContent = '৳ ' + total.toLocaleString();
-    if (pricePerPersonEl) pricePerPersonEl.textContent = '৳ ' + baseRate.toLocaleString();
+    const budgetPersonsInput = document.getElementById('budgetPersons');
+    if (budgetPersonsInput && budgetPersonsInput.value !== String(persons)) {
+      budgetPersonsInput.value = persons;
+      budgetPersonsInput.dispatchEvent(new Event('change'));
+    } else {
+      const total = window.currentEstimatedBudget || (baseRate * persons);
+      if (priceEl) priceEl.textContent = '৳ ' + total.toLocaleString();
+      if (pricePerPersonEl) pricePerPersonEl.textContent = '৳ ' + Math.round(total / persons).toLocaleString();
+    }
   }
 
   // Persons +/- buttons
@@ -1043,7 +1152,8 @@ function initBookingSection(place, destIndex) {
         body: JSON.stringify({
           spot_id: spotId,
           booking_date: bookingDate,
-          persons: persons
+          persons: persons,
+          price: window.currentEstimatedBudget || 0
         })
       });
 
