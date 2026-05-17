@@ -577,9 +577,39 @@ app.post('/api/auth/signup/start', async (req, res) => {
     await stampSignupCode(email, code);
 
     const delivery = await sendVerificationMail({ email, name, code });
-    return res.json({ ok: true, nextStep: 'verify-code', email, delivery, code: (process.env.NODE_ENV === 'development' ? code : undefined) });
+    return res.json({ 
+      ok: true, 
+      nextStep: 'verify-code', 
+      email, 
+      delivery: delivery.delivery, 
+      previewCode: delivery.delivery === 'mock' ? code : undefined,
+      code: (process.env.NODE_ENV === 'development' || delivery.delivery === 'mock' ? code : undefined) 
+    });
   } catch (err) {
     res.status(500).json({ error: 'Signup failed' });
+  }
+});
+
+app.post('/api/auth/signup/resend', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    if (!email || !email.includes('@')) return res.status(400).json({ error: 'valid email is required' });
+
+    const signup = await findPendingSignup(email);
+    const code = generateVerificationCode();
+    await stampSignupCode(email, code);
+
+    const delivery = await sendVerificationMail({ email, name: signup?.name || 'User', code });
+    return res.json({ 
+      ok: true, 
+      nextStep: 'verify-code', 
+      email, 
+      delivery: delivery.delivery, 
+      previewCode: delivery.delivery === 'mock' ? code : undefined,
+      code: (process.env.NODE_ENV === 'development' || delivery.delivery === 'mock' ? code : undefined) 
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Resend failed' });
   }
 });
 
