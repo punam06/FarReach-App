@@ -970,8 +970,9 @@ function initBookingSection(place, destIndex) {
   dateInput.value = minDate;
 
   // Base rate depends on budget category (matches server logic)
-  const budgetCategory = (category === 'beach' || category === 'city') ? 'High' : 'Low';
-  const baseRate = budgetCategory === 'High' ? 5000 : 2500;
+  const profile = getSpotFilterProfile(place);
+  const budgetCategory = (profile.budget || 'low').toLowerCase();
+  const baseRate = budgetCategory === 'high' ? 5000 : (budgetCategory === 'mid' ? 3750 : 2500);
 
   function updatePrice() {
     const persons = parseInt(personsInput.value) || 1;

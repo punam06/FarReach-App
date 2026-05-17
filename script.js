@@ -111,19 +111,23 @@ const budgetRates = {
 
 const spotFilterProfiles = {
   beach: { budget: 'high', road: 'easy', opportunity: 'leisure' },
-  nature: { budget: 'low', road: 'moderate', opportunity: 'wildlife' },
+  nature: { budget: 'mid', road: 'moderate', opportunity: 'wildlife' },
   history: { budget: 'low', road: 'easy', opportunity: 'culture' },
   religious: { budget: 'low', road: 'easy', opportunity: 'culture' },
   city: { budget: 'high', road: 'easy', opportunity: 'leisure' },
-  wetland: { budget: 'low', road: 'moderate', opportunity: 'eco' },
+  wetland: { budget: 'mid', road: 'moderate', opportunity: 'eco' },
   ecotourism: { budget: 'low', road: 'easy', opportunity: 'eco' },
   culture: { budget: 'low', road: 'easy', opportunity: 'culture' }
 };
 
 const spotFilterOverrides = {
-  Sundarbans: { road: 'moderate', opportunity: 'wildlife' },
-  'Saint Martin\'s Island': { road: 'moderate', opportunity: 'leisure' },
-  Nilgiri: { budget: 'high', road: 'challenging', opportunity: 'adventure' }
+  Sundarbans: { budget: 'high', road: 'moderate', opportunity: 'wildlife' },
+  'Saint Martin\'s Island': { budget: 'high', road: 'moderate', opportunity: 'leisure' },
+  Nilgiri: { budget: 'high', road: 'challenging', opportunity: 'adventure' },
+  'Sajek Valley': { budget: 'mid', road: 'challenging', opportunity: 'adventure' },
+  Kuakata: { budget: 'mid', road: 'moderate', opportunity: 'leisure' },
+  'Srimangal Tea Garden': { budget: 'mid', road: 'easy', opportunity: 'eco' },
+  Jaflong: { budget: 'mid', road: 'moderate', opportunity: 'leisure' }
 };
 
 // District coordinates (approximate center of each district)
@@ -935,6 +939,14 @@ async function loadSpotsFromDB() {
       // Add to districtToDivision if missing
       if (district && dbSpot.division_name && !districtToDivision[district]) {
         districtToDivision[district] = dbSpot.division_name.toLowerCase();
+      }
+
+      // Dynamically populate budget override from DB
+      if (dbSpot.budget_category) {
+        spotFilterOverrides[name] = {
+          ...(spotFilterOverrides[name] || {}),
+          budget: dbSpot.budget_category.toLowerCase()
+        };
       }
 
       // Add spot if not already in the hardcoded list

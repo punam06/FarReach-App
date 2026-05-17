@@ -1665,6 +1665,7 @@ button, input { font: inherit; }
   text-transform: uppercase;
 }
 .budget-pill.low { background: rgba(80, 216, 120, 0.15); color: #9ce8b4; border: 1px solid rgba(80, 216, 120, 0.3); }
+.budget-pill.mid { background: rgba(54, 162, 235, 0.15); color: #82c2ee; border: 1px solid rgba(54, 162, 235, 0.3); }
 .budget-pill.high { background: rgba(245, 166, 35, 0.15); color: #f5a623; border: 1px solid rgba(245, 166, 35, 0.3); }
 
 .budget-grid {

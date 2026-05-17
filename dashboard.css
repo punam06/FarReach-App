@@ -157,7 +157,7 @@ body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--t
 .badge-success { background: #F0FFF4; color: var(--success); }
 .badge-danger { background: #FFF5F5; color: var(--danger); }
 .badge-warning { background: #FFFAF0; color: #D69E2E; }
-.badge-info { background: var(--primary-light); color: var(--primary); }
+.badge-info { background: #EBF8FF; color: #3182CE; }
 
 /* Forms */
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }

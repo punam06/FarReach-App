@@ -1190,7 +1190,7 @@ app.post('/api/bookings', requireAuth, async (req, res) => {
     }
 
     // Calculate estimated price based on budget category and persons
-    const baseRate = spot.budget_category === 'High' ? 5000 : 2500;
+    const baseRate = spot.budget_category === 'High' ? 5000 : (spot.budget_category === 'Mid' ? 3750 : 2500);
     const price = baseRate * numPersons;
 
     const [result] = await db.query(
