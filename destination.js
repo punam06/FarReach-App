@@ -20,6 +20,7 @@ function getDestinationFromURL() {
 
 // Initialize destination page
 async function initDestinationPage() {
+  await loadSpotsFromDB();
   await loadSiteContent();
   const destIndex = getDestinationFromURL();
   
@@ -43,6 +44,7 @@ async function initDestinationPage() {
   displayHotels(district);
   displayRelatedDestinations(district, destIndex);
   updateBookingLinks(name, district);
+  initBookingSection(place, destIndex);
   initReviewSection();
   initBudgetCalculator(category);
 }
@@ -943,6 +945,127 @@ function initBudgetCalculator(category) {
 
   // Initial calculation
   updateCalculation();
+}
+
+// --- BOOKING SECTION ---
+function initBookingSection(place, destIndex) {
+  const dateInput = document.getElementById('bookingDate');
+  const personsInput = document.getElementById('bookingPersons');
+  const priceEl = document.getElementById('bookingPrice');
+  const pricePerPersonEl = document.getElementById('bookingPricePerPerson');
+  const confirmBtn = document.getElementById('confirmBookingBtn');
+  const messageEl = document.getElementById('bookingMessage');
+  const minusBtn = document.getElementById('bookingPersonsMinus');
+  const plusBtn = document.getElementById('bookingPersonsPlus');
+
+  if (!dateInput || !confirmBtn) return;
+
+  const [name, district, category] = place;
+
+  // Set minimum date to tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minDate = tomorrow.toISOString().split('T')[0];
+  dateInput.min = minDate;
+  dateInput.value = minDate;
+
+  // Base rate depends on budget category (matches server logic)
+  const budgetCategory = (category === 'beach' || category === 'city') ? 'High' : 'Low';
+  const baseRate = budgetCategory === 'High' ? 5000 : 2500;
+
+  function updatePrice() {
+    const persons = parseInt(personsInput.value) || 1;
+    const total = baseRate * persons;
+    if (priceEl) priceEl.textContent = '৳ ' + total.toLocaleString();
+    if (pricePerPersonEl) pricePerPersonEl.textContent = '৳ ' + baseRate.toLocaleString();
+  }
+
+  // Persons +/- buttons
+  if (minusBtn) {
+    minusBtn.addEventListener('click', () => {
+      let val = parseInt(personsInput.value) || 1;
+      if (val > 1) { personsInput.value = val - 1; updatePrice(); }
+    });
+  }
+  if (plusBtn) {
+    plusBtn.addEventListener('click', () => {
+      let val = parseInt(personsInput.value) || 1;
+      if (val < 20) { personsInput.value = val + 1; updatePrice(); }
+    });
+  }
+  personsInput.addEventListener('change', updatePrice);
+  updatePrice();
+
+  // Confirm booking
+  confirmBtn.addEventListener('click', async () => {
+    const token = localStorage.getItem('tourismAuthToken') || '';
+    if (!token) {
+      messageEl.innerHTML = '<span style="color:#F5A623;">⚠️ Please <a href="/" style="color:#a9e8bb; text-decoration:underline;">sign in</a> to book this spot.</span>';
+      return;
+    }
+
+    const bookingDate = dateInput.value;
+    if (!bookingDate) {
+      messageEl.innerHTML = '<span style="color:#F5A623;">⚠️ Please select a travel date.</span>';
+      return;
+    }
+
+    const persons = parseInt(personsInput.value) || 1;
+
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '⏳ Booking...';
+    messageEl.innerHTML = '';
+
+    try {
+      // Look up the spot_id by name from the DB
+      const spotName = name;
+      const lookupRes = await fetch(`${API_BASE_URL}/api/spots/lookup?name=${encodeURIComponent(spotName)}`).catch(() => null);
+
+      let spotId = null;
+
+      if (lookupRes && lookupRes.ok) {
+        const lookupData = await lookupRes.json();
+        if (lookupData.spot) spotId = lookupData.spot.id;
+      }
+
+      // Fallback: use destination index + 1
+      if (!spotId) {
+        spotId = parseInt(destIndex) + 1;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          spot_id: spotId,
+          booking_date: bookingDate,
+          persons: persons
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        messageEl.innerHTML = '<span style="color:#a9e8bb;">✅ ' + (data.message || 'Booking confirmed!') + '</span>';
+        confirmBtn.textContent = '✅ Booked!';
+        setTimeout(() => {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = '✅ Confirm Booking';
+        }, 3000);
+      } else {
+        messageEl.innerHTML = '<span style="color:#F5A623;">⚠️ ' + (data.error || 'Booking failed') + '</span>';
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '✅ Confirm Booking';
+      }
+    } catch (err) {
+      messageEl.innerHTML = '<span style="color:#F5A623;">⚠️ Connection error. Please try again.</span>';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '✅ Confirm Booking';
+    }
+  });
 }
 
 // Initialize when page loads

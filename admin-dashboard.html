@@ -518,7 +518,20 @@
           var avatar = u.profile_pic ? '<img src="' + spotImage(u.profile_pic) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;margin-right:10px;">' : '<div style="width:36px;height:36px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;margin-right:10px;font-weight:bold;">' + u.name.charAt(0) + '</div>';
           var userInfo = '<div style="display:flex;align-items:center;">' + avatar + '<div><strong>' + u.name + '</strong><br><small style="color:var(--muted);">' + u.email + '</small></div></div>';
           var contactProfile = '<div style="font-size:13px;"><i class="fas fa-phone"></i> ' + (u.phone || 'N/A') + '<br><i class="fas fa-map-marker-alt"></i> ' + (u.address || 'N/A') + '</div>';
-          return '<tr><td>' + userInfo + '</td><td>' + contactProfile + '</td><td><span class="badge ' + (u.role === 'admin' ? 'badge-warning' : 'badge-info') + '">' + u.role + '</span></td><td>' + (u.is_verified ? '<span class="badge badge-success">Verified</span>' : '<span class="badge badge-danger">Unverified</span>') + '</td><td>' + new Date(u.created_at).toLocaleDateString() + '</td><td>' + (u.role !== 'admin' ? '<button class="btn-sm edit" onclick="toggleRole(' + u.id + ',\'' + u.role + '\')"><i class="fas fa-user-shield"></i> Make Admin</button> ' : '') + '<button class="btn-sm delete" onclick="deleteUser(' + u.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
+          var joinedDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A';
+          var isSelf = currentUser && currentUser.id === u.id;
+          var actions = '';
+          if (u.role === 'admin') {
+            if (!isSelf) {
+              actions += '<button class="btn-sm edit" onclick="toggleRole(' + u.id + ',\'' + u.role + '\')"><i class="fas fa-user-minus"></i> Remove Admin</button> ';
+            }
+          } else {
+            actions += '<button class="btn-sm edit" onclick="toggleRole(' + u.id + ',\'' + u.role + '\')"><i class="fas fa-user-shield"></i> Make Admin</button> ';
+          }
+          if (!isSelf) {
+            actions += '<button class="btn-sm delete" onclick="deleteUser(' + u.id + ')"><i class="fas fa-trash"></i></button>';
+          }
+          return '<tr><td>' + userInfo + '</td><td>' + contactProfile + '</td><td><span class="badge ' + (u.role === 'admin' ? 'badge-warning' : 'badge-info') + '">' + u.role + '</span></td><td>' + (u.is_verified ? '<span class="badge badge-success">Verified</span>' : '<span class="badge badge-danger">Unverified</span>') + '</td><td>' + joinedDate + '</td><td>' + actions + '</td></tr>';
         }).join('');
       } catch (e) { showToast('Failed to load', 'error'); }
     }
@@ -528,14 +541,20 @@
       if (!confirm('Change role to ' + newRole + '?')) return;
       try {
         var res = await fetch(API + '/admin/users/' + id + '/role', { method: 'PUT', headers: getJSONHeaders(), body: JSON.stringify({ role: newRole }) });
-        if (res.ok) { showToast('Role updated', 'success'); loadUsers(); }
-        else showToast('Failed', 'error');
-      } catch (e) {}
+        var data = await res.json().catch(function() { return {}; });
+        if (res.ok) { showToast('Role updated to ' + newRole, 'success'); loadUsers(); loadStats(); }
+        else showToast(data.error || 'Failed to update role', 'error');
+      } catch (e) { showToast('Connection error', 'error'); }
     }
 
     async function deleteUser(id) {
-      if (!confirm('Delete this user?')) return;
-      try { var res = await fetch(API + '/admin/users/' + id, { method: 'DELETE', headers: getHeaders() }); if (res.ok) { showToast('User deleted', 'success'); loadUsers(); } else showToast('Failed', 'error'); } catch (e) {}
+      if (!confirm('Delete this user? This will also remove their reviews, saved spots, and bookings.')) return;
+      try {
+        var res = await fetch(API + '/admin/users/' + id, { method: 'DELETE', headers: getHeaders() });
+        var data = await res.json().catch(function() { return {}; });
+        if (res.ok) { showToast('User deleted', 'success'); loadUsers(); loadStats(); }
+        else showToast(data.error || 'Failed to delete user', 'error');
+      } catch (e) { showToast('Connection error', 'error'); }
     }
 
     // REVIEWS

@@ -1,4 +1,4 @@
-const spots = [
+let spots = [
   ["Cox's Bazar Sea Beach", "Cox's Bazar", "beach", [21.4159, 91.9810]],
   ["Sundarbans", "Khulna", "nature", [21.9497, 89.1833]],
   ["Somapura Mahavihara", "Naogaon", "history", [25.0311, 88.9769]],
@@ -894,6 +894,68 @@ function render() {
 
 // Destination-specific features removed from here, now in destination.js
 
+// Fetch spots from DB and merge with the hardcoded array
+async function loadSpotsFromDB() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/spots`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.spots || !data.spots.length) return;
+
+    // Map DB categories to frontend categories
+    const categoryMap = {
+      'beach': 'beach', 'nature': 'nature', 'history': 'history', 'historical': 'history',
+      'religious': 'religious', 'culture': 'culture', 'wetland': 'wetland',
+      'ecotourism': 'ecotourism', 'city': 'city', 'wildlife': 'nature',
+      'hill tracks': 'nature', 'mountain': 'nature', 'island': 'beach',
+      'lake': 'nature', 'waterfall': 'nature', 'forest': 'ecotourism',
+      'general': 'nature'
+    };
+
+    // Build a set of existing spot names for deduplication
+    const existingNames = new Set(spots.map(s => s[0].toLowerCase()));
+
+    data.spots.forEach(dbSpot => {
+      const name = dbSpot.name;
+      const district = dbSpot.district_name || 'Unknown';
+      const rawCategory = (dbSpot.category || 'nature').toLowerCase();
+      const category = categoryMap[rawCategory] || rawCategory;
+      const coords = (dbSpot.latitude && dbSpot.longitude) ? [parseFloat(dbSpot.latitude), parseFloat(dbSpot.longitude)] : null;
+
+      // Add to cats if it's a truly new category
+      if (!cats[category]) {
+        cats[category] = category.charAt(0).toUpperCase() + category.slice(1);
+      }
+
+      // Add district coords if we don't have them
+      if (coords && district && !districtCoords[district]) {
+        districtCoords[district] = coords;
+      }
+
+      // Add to districtToDivision if missing
+      if (district && dbSpot.division_name && !districtToDivision[district]) {
+        districtToDivision[district] = dbSpot.division_name.toLowerCase();
+      }
+
+      // Add spot if not already in the hardcoded list
+      if (!existingNames.has(name.toLowerCase())) {
+        const entry = [name, district, category];
+        if (coords) entry.push(coords);
+        spots.push(entry);
+        existingNames.add(name.toLowerCase());
+
+        // Add image mapping if available
+        if (dbSpot.image) {
+          spotImages[name] = dbSpot.image.startsWith('http') ? dbSpot.image : 'spot-pictures/' + dbSpot.image;
+        }
+      }
+    });
+  } catch (e) {
+    // Silently fail — hardcoded spots still work as fallback
+    console.warn('Could not load spots from DB:', e.message);
+  }
+}
+
 async function init() {
   const searchEl = document.getElementById("search");
   if (!searchEl) return;
@@ -904,6 +966,9 @@ async function init() {
       buildDivisionButtons(getFiltered(false));
     });
   }
+
+  // Load DB spots before first render
+  await loadSpotsFromDB();
 
   buildCategoryButtons();
   buildDivisionButtons(spots);

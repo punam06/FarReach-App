@@ -282,7 +282,66 @@
       }
     }
     async function loadGuides(){try{const res=await fetch(API+'/user/guides',{headers:getHeaders()});const data=await res.json();const g=document.getElementById('guides-grid');if(data.guides.length===0)g.innerHTML='<div class="empty-state"><i class="fas fa-map-marked-alt"></i><h4>No guides found</h4><p>Save spots to see their guides!</p></div>';else g.innerHTML=data.guides.map(g=>'<div class="guide-card"><h4><i class="fas fa-user-tie" style="color:var(--primary);margin-right:6px;"></i>'+g.name+'</h4><div class="guide-spot"><i class="fas fa-map-marker-alt"></i> '+(g.spot_name||'N/A')+'</div><div class="guide-card-details"><div><i class="fas fa-clock"></i> '+(g.experience||'N/A')+'</div><div><i class="fas fa-star"></i> '+(g.rating||'N/A')+'</div><div><i class="fas fa-language"></i> '+(g.languages||'N/A')+'</div><div><i class="fas fa-tag"></i> ৳'+(g.price||'0')+'</div><div><i class="fas fa-phone"></i> '+(g.contact||'N/A')+'</div><div><i class="fas fa-award"></i> '+(g.specialties||'N/A')+'</div></div></div>').join('');}catch(e){showToast('Failed to load','error');}}
-    async function loadBookings(){try{const res=await fetch(API+'/user/bookings',{headers:getHeaders()});const data=await res.json();const bl=document.getElementById('bookings-list');if(data.bookings.length===0)bl.innerHTML='<div class="empty-state"><i class="fas fa-calendar-check"></i><h4>No bookings yet</h4><p>Book a hotel or guide from the main site.</p></div>';else bl.innerHTML=data.bookings.map(b=>'<div style="border-bottom:1px solid #E2E8F0;padding:12px 0;"><div style="display:flex;justify-content:space-between;"><strong><i class="fas fa-'+(b.type==='hotel'?'hotel':'user-tie')+'" style="color:var(--primary);margin-right:6px;"></i>'+b.target_name+' ('+b.type.toUpperCase()+')</strong><span style="color:'+(b.status==='confirmed'?'var(--success)':'var(--danger)')+';font-weight:600;font-size:14px;">'+b.status.toUpperCase()+'</span></div><div style="font-size:14px;color:#718096;margin-top:4px;">Date: '+(b.booking_date?new Date(b.booking_date).toLocaleDateString():new Date(b.created_at).toLocaleDateString())+' | Price: ৳'+b.price+'</div></div>').join('');}catch(e){showToast('Failed to load','error');}}
+    async function loadBookings(){
+      try{
+        const res=await fetch(API+'/user/bookings',{headers:getHeaders()});
+        const data=await res.json();
+        const bl=document.getElementById('bookings-list');
+        if(data.bookings.length===0) {
+          bl.innerHTML='<div class="empty-state"><i class="fas fa-calendar-check"></i><h4>No bookings yet</h4><p>Book a spot from the destination page to get started.</p></div>';
+          return;
+        }
+        bl.innerHTML=data.bookings.map(function(b){
+          var typeIcon = b.type==='hotel'?'hotel':(b.type==='guide'?'user-tie':'box-open');
+          var statusColor = b.status==='confirmed'?'var(--success)':(b.status==='cancelled'?'var(--danger)':'#F5A623');
+          var statusBg = b.status==='confirmed'?'rgba(80,216,120,0.1)':(b.status==='cancelled'?'rgba(229,62,62,0.1)':'rgba(245,166,35,0.1)');
+          var spotLabel = b.spot_name || b.target_name || 'Unknown';
+          var dateStr = b.booking_date ? new Date(b.booking_date).toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'}) : 'N/A';
+          var createdStr = b.created_at ? new Date(b.created_at).toLocaleDateString() : '';
+
+          var cancelBtn = '';
+          if (b.status !== 'cancelled') {
+            cancelBtn = '<button class="btn-sm delete" onclick="cancelBooking('+b.id+')" style="margin-top:8px;"><i class="fas fa-times-circle"></i> Cancel Booking</button>';
+          }
+
+          return '<div style="border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;margin-bottom:12px;background:rgba(255,255,255,0.02);">'+
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'+
+              '<div>'+
+                '<strong style="font-size:15px;"><i class="fas fa-'+typeIcon+'" style="color:var(--primary);margin-right:6px;"></i>'+spotLabel+'</strong>'+
+                '<div style="font-size:13px;color:#718096;margin-top:4px;">'+
+                  '<i class="fas fa-calendar" style="margin-right:4px;"></i>'+dateStr+
+                  ' &nbsp;|&nbsp; <i class="fas fa-tag" style="margin-right:4px;"></i>'+b.type.toUpperCase()+
+                  ' &nbsp;|&nbsp; <strong style="color:#a9e8bb;">৳'+b.price.toLocaleString()+'</strong>'+
+                '</div>'+
+                (createdStr ? '<div style="font-size:11px;color:#a0aec0;margin-top:2px;">Booked on '+createdStr+'</div>' : '')+
+              '</div>'+
+              '<span style="padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;color:'+statusColor+';background:'+statusBg+';text-transform:uppercase;">'+b.status+'</span>'+
+            '</div>'+
+            cancelBtn+
+          '</div>';
+        }).join('');
+      } catch(e){showToast('Failed to load bookings','error');}
+    }
+
+    async function cancelBooking(id) {
+      if (!confirm('Are you sure you want to cancel this booking?')) return;
+      try {
+        var res = await fetch(API+'/user/bookings/'+id, {
+          method: 'DELETE',
+          headers: getHeaders()
+        });
+        var data = await res.json().catch(function(){ return {}; });
+        if (res.ok) {
+          showToast(data.message || 'Booking cancelled', 'success');
+          loadBookings();
+          loadDashboard();
+        } else {
+          showToast(data.error || 'Failed to cancel booking', 'error');
+        }
+      } catch(e) {
+        showToast('Connection error', 'error');
+      }
+    }
     function updateUserUI(){
       if(!currentUser)return;
       document.getElementById('user-name').textContent=currentUser.name;

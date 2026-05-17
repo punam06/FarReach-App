@@ -19,7 +19,7 @@ const clientRoot = path.join(__dirname, '..');
 app.use(express.json({ limit: '1mb' }));
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
@@ -534,6 +534,7 @@ async function currentUserFromRequest(req) {
 
 function publicUser(user) {
   if (!user) return null;
+  const joinDate = user.created_at ? new Date(user.created_at).toISOString() : null;
   return {
     id: user.id,
     name: user.name,
@@ -543,8 +544,9 @@ function publicUser(user) {
     phone: user.phone || '',
     address: user.address || '',
     is_verified: !!user.is_verified,
-    verifiedAt: user.created_at, // Mocking verifiedAt with created_at for now if missing
-    createdAt: user.created_at,
+    verifiedAt: joinDate,
+    createdAt: joinDate,
+    created_at: joinDate,
   };
 }
 
@@ -789,6 +791,33 @@ app.get('/api/site-content', (req, res) => {
 });
 
 
+// Public spot lookup for booking (no admin required)
+app.get('/api/spots/lookup', async (req, res) => {
+  try {
+    const name = (req.query.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'name query is required' });
+    const [rows] = await db.query('SELECT id, name, budget_category FROM spots WHERE name = ?', [name]);
+    if (rows.length === 0) return res.json({ spot: null });
+    res.json({ spot: rows[0] });
+  } catch (err) { res.status(500).json({ error: 'Lookup failed' }); }
+});
+
+// Public spots list — used by the main site to dynamically load all spots from the DB
+app.get('/api/spots', async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT s.id, s.name, s.category, s.description, s.image, s.budget_category,
+             s.latitude, s.longitude,
+             d.name as district_name, dv.name as division_name
+      FROM spots s
+      LEFT JOIN districts d ON s.district_id = d.id
+      LEFT JOIN divisions dv ON s.division_id = dv.id
+      ORDER BY s.id ASC
+    `);
+    res.json({ spots: rows });
+  } catch (err) { res.status(500).json({ error: 'Spots failed' }); }
+});
+
 // --- ADMIN APIS ---
 
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
@@ -857,6 +886,41 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
     const [rows] = await db.query('SELECT * FROM users ORDER BY created_at DESC');
     res.json({ users: rows.map(publicUser) });
   } catch (err) { res.status(500).json({ error: 'Users failed' }); }
+});
+
+app.put('/api/admin/users/:id/role', requireAdmin, async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!role || !['admin', 'user'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be admin or user.' });
+    }
+    // Prevent admin from demoting themselves
+    const currentUser = await currentUserFromRequest(req);
+    if (currentUser && currentUser.id === parseInt(req.params.id) && role !== 'admin') {
+      return res.status(400).json({ error: 'You cannot remove your own admin role.' });
+    }
+    await db.query('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: 'Role update failed' }); }
+});
+
+app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
+  try {
+    // Prevent admin from deleting themselves
+    const currentUser = await currentUserFromRequest(req);
+    if (currentUser && currentUser.id === parseInt(req.params.id)) {
+      return res.status(400).json({ error: 'You cannot delete your own account from the admin panel.' });
+    }
+    // Delete user's related data first to avoid FK constraint errors
+    await db.query('DELETE FROM reviews WHERE user_id = ?', [req.params.id]);
+    await db.query('DELETE FROM saved_spots WHERE user_id = ?', [req.params.id]);
+    await db.query('DELETE FROM bookings WHERE user_id = ?', [req.params.id]);
+    await db.query('DELETE FROM users WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete user error:', err);
+    res.status(500).json({ error: 'Delete failed' });
+  }
 });
 
 app.post('/api/admin/divisions', requireAdmin, async (req, res) => {
@@ -982,7 +1046,7 @@ app.get('/api/admin/guides', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/bookings', requireAdmin, async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT b.*, u.name as user_name FROM bookings b LEFT JOIN users u ON b.user_id = u.id ORDER BY b.created_at DESC');
+    const [rows] = await db.query('SELECT b.*, u.name as user_name, u.email as user_email FROM bookings b LEFT JOIN users u ON b.user_id = u.id ORDER BY b.created_at DESC');
     res.json({ bookings: rows });
   } catch (err) { res.status(500).json({ error: 'Bookings failed' }); }
 });
@@ -1061,25 +1125,132 @@ app.get('/api/user/saved-spots', requireAuth, async (req, res) => {
 app.get('/api/user/guides', requireAuth, async (req, res) => {
   try {
     const user = await currentUserFromRequest(req);
-    // Fetch guides for spots that the user has saved
-    const [rows] = await db.query(`
-      SELECT g.*, s.name as spot_name 
+    // First try: guides for spots the user has saved
+    const [savedGuides] = await db.query(`
+      SELECT g.*, s.name as spot_name, 1 as is_saved_spot
       FROM guides g 
+      LEFT JOIN spots s ON g.spot_id = s.id
       JOIN saved_spots ss ON g.spot_id = ss.spot_id 
-      JOIN spots s ON g.spot_id = s.id
       WHERE ss.user_id = ?
       ORDER BY g.rating DESC
     `, [user.id]);
-    res.json({ guides: rows });
+
+    if (savedGuides.length > 0) {
+      return res.json({ guides: savedGuides });
+    }
+
+    // Fallback: show all available guides so the directory is never empty
+    const [allGuides] = await db.query(`
+      SELECT g.*, s.name as spot_name, 0 as is_saved_spot
+      FROM guides g 
+      LEFT JOIN spots s ON g.spot_id = s.id
+      ORDER BY g.rating DESC
+    `);
+    res.json({ guides: allGuides });
   } catch (err) { res.status(500).json({ error: 'Guides failed' }); }
 });
 
 app.get('/api/user/bookings', requireAuth, async (req, res) => {
   try {
     const user = await currentUserFromRequest(req);
-    const [rows] = await db.query('SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC', [user.id]);
+    const [rows] = await db.query(`
+      SELECT b.*, s.name as spot_name 
+      FROM bookings b 
+      LEFT JOIN spots s ON b.spot_id = s.id 
+      WHERE b.user_id = ? 
+      ORDER BY b.created_at DESC
+    `, [user.id]);
     res.json({ bookings: rows });
   } catch (err) { res.status(500).json({ error: 'Bookings failed' }); }
+});
+
+// --- BOOKING CREATION ---
+app.post('/api/bookings', requireAuth, async (req, res) => {
+  try {
+    const user = await currentUserFromRequest(req);
+    const { spot_id, booking_date, persons } = req.body;
+
+    if (!spot_id) return res.status(400).json({ error: 'spot_id is required' });
+    if (!booking_date) return res.status(400).json({ error: 'booking_date is required' });
+
+    const numPersons = parseInt(persons) || 1;
+
+    // Look up spot
+    const [spotRows] = await db.query('SELECT id, name, budget_category FROM spots WHERE id = ?', [spot_id]);
+    if (spotRows.length === 0) return res.status(404).json({ error: 'Spot not found' });
+    const spot = spotRows[0];
+
+    // Prevent duplicate active booking for same user + spot + date
+    const [existing] = await db.query(
+      "SELECT id FROM bookings WHERE user_id = ? AND spot_id = ? AND booking_date = ? AND status != 'cancelled'",
+      [user.id, spot_id, booking_date]
+    );
+    if (existing.length > 0) {
+      return res.status(409).json({ error: 'You already have an active booking for this spot on this date.' });
+    }
+
+    // Calculate estimated price based on budget category and persons
+    const baseRate = spot.budget_category === 'High' ? 5000 : 2500;
+    const price = baseRate * numPersons;
+
+    const [result] = await db.query(
+      "INSERT INTO bookings (user_id, spot_id, type, target_name, price, booking_date, status) VALUES (?, ?, 'package', ?, ?, ?, 'confirmed')",
+      [user.id, spot_id, spot.name, price, booking_date]
+    );
+
+    res.json({ 
+      ok: true, 
+      id: result.insertId, 
+      message: `Booking confirmed for ${spot.name} on ${booking_date}`,
+      booking: {
+        id: result.insertId,
+        spot_name: spot.name,
+        price,
+        booking_date,
+        status: 'confirmed',
+        persons: numPersons
+      }
+    });
+  } catch (err) {
+    console.error('Create booking error:', err);
+    res.status(500).json({ error: 'Booking failed' });
+  }
+});
+
+// --- BOOKING CANCELLATION ---
+app.delete('/api/user/bookings/:id', requireAuth, async (req, res) => {
+  try {
+    const user = await currentUserFromRequest(req);
+
+    // Get the booking
+    const [rows] = await db.query('SELECT * FROM bookings WHERE id = ? AND user_id = ?', [req.params.id, user.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
+
+    const booking = rows[0];
+
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ error: 'This booking is already cancelled.' });
+    }
+
+    // Check 24-hour cancellation window: booking_date must be at least 24h away
+    if (booking.booking_date) {
+      const bookingDate = new Date(booking.booking_date);
+      const now = new Date();
+      const hoursUntilBooking = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (hoursUntilBooking < 24) {
+        return res.status(400).json({ 
+          error: 'Cancellation is not allowed within 24 hours of the booking date.' 
+        });
+      }
+    }
+
+    await db.query("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [req.params.id]);
+    res.json({ ok: true, message: 'Booking cancelled successfully.' });
+  } catch (err) {
+    console.error('Cancel booking error:', err);
+    res.status(500).json({ error: 'Cancellation failed' });
+  }
 });
 app.put('/api/auth/profile', requireAuth, upload.single('profile_pic'), async (req, res) => {
   try {

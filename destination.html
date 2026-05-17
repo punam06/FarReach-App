@@ -142,6 +142,42 @@
         </header>
         <div class="dest-page-content">
           <div class="booking-options">
+            <!-- Package Booking Card -->
+            <div class="booking-card" id="packageBookingCard">
+              <h3>📦 Book This Spot</h3>
+              <p>Confirm your visit with a package booking. Includes entry, basic guide, and local transport.</p>
+              <div id="bookingFormArea">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:15px;">
+                  <div>
+                    <label style="font-size:0.85rem; color:var(--muted); display:block; margin-bottom:4px;">Travel Date</label>
+                    <input type="date" id="bookingDate" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:var(--text); font-size:0.95rem;" />
+                  </div>
+                  <div>
+                    <label style="font-size:0.85rem; color:var(--muted); display:block; margin-bottom:4px;">Number of Persons</label>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <button type="button" id="bookingPersonsMinus" class="button secondary" style="padding:8px 14px; font-size:1rem; min-width:auto;">−</button>
+                      <input type="number" id="bookingPersons" value="1" min="1" max="20" style="width:60px; text-align:center; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:var(--text); font-size:0.95rem;" />
+                      <button type="button" id="bookingPersonsPlus" class="button secondary" style="padding:8px 14px; font-size:1rem; min-width:auto;">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="bookingEstimate" style="margin-top:14px; padding:12px; border-radius:10px; background:rgba(169,232,187,0.08); border:1px solid rgba(169,232,187,0.15);">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:var(--muted); font-size:0.9rem;">Estimated Total</span>
+                    <strong id="bookingPrice" style="color:#a9e8bb; font-size:1.2rem;">৳ 2,500</strong>
+                  </div>
+                  <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Per person: <span id="bookingPricePerPerson">৳ 2,500</span></div>
+                </div>
+                <button type="button" id="confirmBookingBtn" class="button primary" style="width:100%; margin-top:14px; padding:14px; font-size:1rem; font-weight:600;">
+                  ✅ Confirm Booking
+                </button>
+                <div id="bookingMessage" style="margin-top:10px; text-align:center; font-size:0.9rem;"></div>
+                <p style="font-size:0.78rem; color:var(--muted); margin-top:10px; text-align:center;">
+                  Free cancellation up to 24 hours before your travel date.
+                </p>
+              </div>
+            </div>
+            <!-- External Links -->
             <div class="booking-card">
               <h3>🎫 Tickets & Transport</h3>
               <p>Book event tickets and arrange transportation</p>
@@ -151,18 +187,6 @@
                 <a href="https://bdtickets.com" target="_blank" rel="noopener noreferrer" class="button secondary" style="font-size:0.85rem; padding:8px 16px;">bdtickets</a>
                 <a href="https://sharetrip.net" target="_blank" rel="noopener noreferrer" class="button secondary" style="font-size:0.85rem; padding:8px 16px;">ShareTrip</a>
                 <a href="https://jatri.co" target="_blank" rel="noopener noreferrer" class="button secondary" style="font-size:0.85rem; padding:8px 16px;">Jatri</a>
-              </div>
-            </div>
-            <div class="booking-card">
-              <h3>🏨 Accommodation</h3>
-              <p>Search and book hotels in this area</p>
-              <div class="booking-buttons" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:15px;">
-                <a href="https://hotel.com.bd" target="_blank" rel="noopener noreferrer" class="button secondary" style="font-size:0.85rem; padding:8px 16px;">hotel.com.bd</a>
-                <a href="https://www.booking.com/searchresults.html?ss=Bangladesh" target="_blank" rel="noopener noreferrer" class="button secondary" style="font-size:0.85rem; padding:8px 16px;">Booking.com</a>
-                <a href="https://careflybd.com/hotel-booking/" target="_blank" rel="noopener noreferrer" class="button secondary" style="font-size:0.85rem; padding:8px 16px;">Carefly</a>
-                <a href="https://hotels.gov.bd" target="_blank" rel="noopener noreferrer" class="button secondary" style="font-size:0.85rem; padding:8px 16px;">hotels.gov.bd</a>
-                <a href="https://gozayan.com" target="_blank" rel="noopener noreferrer" class="button secondary" style="font-size:0.85rem; padding:8px 16px;">GoZayan</a>
-                <a href="https://sharetrip.net" target="_blank" rel="noopener noreferrer" class="button secondary" style="font-size:0.85rem; padding:8px 16px;">ShareTrip</a>
               </div>
             </div>
           </div>
