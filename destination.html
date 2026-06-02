@@ -142,19 +142,6 @@
         </div>
       </section>
 
-      <!-- Travel Guide Section -->
-      <section class="dest-page-section" id="guideSection">
-        <header class="section-heading">
-          <h2>🧭 Travel Guide</h2>
-          <p>Essential information and tips for your visit</p>
-        </header>
-        <div class="dest-page-content">
-          <div id="destGuideContent" class="dest-guide-content">
-            <p>Loading guide information...</p>
-          </div>
-        </div>
-      </section>
-
       <!-- Accommodations Section -->
       <section class="dest-page-section" id="hotelSection">
         <header class="section-heading">
@@ -178,6 +165,9 @@
                 </div>
                 <button class="button primary" id="searchHotelsBtn" style="padding:12px; font-weight:600;">Search Hotels</button>
               </div>
+              <div id="hotelDateSummary" style="margin-top:-8px; margin-bottom:6px; padding:10px 12px; border-radius:10px; background:rgba(169,232,187,0.06); border:1px solid rgba(169,232,187,0.12); color:var(--muted); font-size:0.9rem; line-height:1.45;">
+                Select check-in and check-out dates to see live availability.
+              </div>
               <div id="hotelResultsList" style="margin-top: 15px;"></div>
 
               <div class="booking-portals" style="margin-top:24px;">
@@ -189,6 +179,238 @@
                   <a href="https://hotels.gov.bd" target="_blank" class="button secondary booking-btn" style="font-size:0.85rem; padding:8px 16px;">Parjatan (Official)</a>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Travel Guide Section -->
+      <section class="dest-page-section" id="guideSection">
+        <header class="section-heading">
+          <h2>🧭 Travel Guide</h2>
+          <p>Essential information and tips for your visit</p>
+        </header>
+        <div class="dest-page-content">
+          <div id="destGuideContent" class="dest-guide-content">
+            <p>Loading guide information...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Budget Calculator Section -->
+      <section class="dest-page-section" id="budgetSection">
+        <header class="section-heading">
+          <h2>💰 Trip Budget Calculator</h2>
+          <p>Estimate your travel costs based on the number of people and trip duration.</p>
+        </header>
+        <div class="dest-page-content">
+          <div class="budget-calculator-shell">
+            <div class="budget-input-row" style="margin-bottom:16px;">
+              <div class="budget-input-group">
+                <label for="budgetOriginDest">Your District</label>
+                <select id="budgetOriginDest" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.95rem;"><option value="">-- Select --</option><option value="Dhaka">Dhaka</option><option value="Chattogram">Chattogram</option><option value="Rajshahi">Rajshahi</option><option value="Khulna">Khulna</option><option value="Sylhet">Sylhet</option><option value="Rangamati">Rangamati</option><option value="Cox's Bazar">Cox's Bazar</option><option value="Bandarban">Bandarban</option><option value="Khagrachari">Khagrachari</option><option value="Cumilla">Cumilla</option><option value="Noakhali">Noakhali</option><option value="Patuakhali">Patuakhali</option><option value="Naogaon">Naogaon</option><option value="Narayanganj">Narayanganj</option><option value="Bagerhat">Bagerhat</option><option value="Sunamganj">Sunamganj</option><option value="Moulvibazar">Moulvibazar</option><option value="Dinajpur">Dinajpur</option><option value="Kushtia">Kushtia</option><option value="Pabna">Pabna</option><option value="Meherpur">Meherpur</option><option value="Madaripur">Madaripur</option></select>
+              </div>
+              <div class="budget-input-group">
+                <label for="budgetTransportMode">Transport Mode</label>
+                <select id="budgetTransportMode" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.95rem;">
+                  <optgroup label="Road Transport">
+                    <option value="bus_nonac">Bus - Non-AC (intercity budget travel)</option>
+                    <option value="bus_ac">Bus - AC Coach</option>
+                    <option value="bus_sleeper">Bus - Sleeper / Business Class</option>
+                    <option value="microbus">Microbus / Private Minivan</option>
+                    <option value="private_car">Private Car / Rent-a-Car</option>
+                    <option value="cng">CNG / Auto-rickshaw / Local Ride</option>
+                    <option value="jeep">Hill Jeep / 4x4 (Sajek, Bandarban)</option>
+                  </optgroup>
+                  <optgroup label="Rail Transport">
+                    <option value="train_shovon">Train - Shovon (Non-AC)</option>
+                    <option value="train_chair">Train - Chair / First Seat</option>
+                    <option value="train_ac">Train - AC Chair / Cabin</option>
+                    <option value="train_sleeper">Train - Sleeper / Cabin</option>
+                  </optgroup>
+                  <optgroup label="Water Transport">
+                    <option value="ferry">Ferry / Ro-Ro</option>
+                    <option value="launch_deck">Launch - Deck</option>
+                    <option value="launch_cabin">Launch - Cabin</option>
+                    <option value="boat">Boat / Engine Boat / Rowboat</option>
+                  </optgroup>
+                  <optgroup label="Air Transport">
+                    <option value="air">Domestic Flight</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; padding:14px 16px; border-radius:14px; background:rgba(169,232,187,0.06); border:1px solid rgba(169,232,187,0.12); margin-bottom:8px;">
+              <div style="min-width:0;">
+                <strong style="display:block; color:#a9e8bb; margin-bottom:4px;">Auto suggestion</strong>
+                <div id="budgetSuggestionText" style="color:var(--muted); font-size:0.9rem; line-height:1.45;">Suggestions will be tailored to this destination.</div>
+              </div>
+              <button type="button" id="applyBudgetSuggestionBtn" class="button secondary" style="padding:10px 16px; white-space:nowrap;">Apply suggestion</button>
+            </div>
+
+            <div class="budget-input-row" style="margin-bottom:16px;">
+              <div class="budget-input-group">
+                <label for="budgetHotelTier">Hotel & Lodging</label>
+                <select id="budgetHotelTier" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.95rem;">
+                  <optgroup label="Budget Stay">
+                    <option value="normal" selected>Normal / Economy Hotel</option>
+                    <option value="guesthouse">Guesthouse / Lodging House</option>
+                    <option value="homestay">Homestay / Cottage / Boat Cabin</option>
+                  </optgroup>
+                  <optgroup label="Bangladesh Tourist Spot Stays">
+                    <option value="beach_resort">Beach Resort / Sea-view Hotel (Cox's Bazar, Saint Martin's)</option>
+                    <option value="hill_cottage">Hill Cottage / Mountain Resort (Bandarban, Sajek)</option>
+                    <option value="forest_lodge">Forest Lodge / Eco Resort (Sundarbans, Lawachara)</option>
+                    <option value="rest_house">Government Rest House / Parjatan Motel</option>
+                  </optgroup>
+                  <optgroup label="Hotel Star Rating">
+                    <option value="3star">3 Star Hotel / Resort</option>
+                    <option value="boutique">Boutique Hotel / Eco Resort</option>
+                    <option value="5star">5 Star Luxury Hotel / Resort</option>
+                    <option value="luxury_suite">Luxury Suite / Premium Resort Villa</option>
+                    <option value="others">Others / Custom Stay</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="budget-input-group">
+                <label for="budgetGuideTier">Tour Guide Service</label>
+                <select id="budgetGuideTier" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.95rem;">
+                  <optgroup label="General">
+                    <option value="none" selected>No Guide (Self-Explore)</option>
+                    <option value="local">Local Spot Guide</option>
+                    <option value="licensed">Professional Licensed Guide</option>
+                  </optgroup>
+                  <optgroup label="Bangladesh Destination Specialists">
+                    <option value="beach">Beach Guide (Cox's Bazar, Kuakata, Saint Martin's)</option>
+                    <option value="hill">Hill Trek Guide (Bandarban, Sajek, Rangamati)</option>
+                    <option value="forest">Forest / Sundarbans Guide</option>
+                    <option value="eco">Eco-Tour Guide (Lawachara, Srimangal, haor areas)</option>
+                    <option value="heritage">Heritage Guide (Paharpur, Mahasthangarh, Old Dhaka)</option>
+                    <option value="religious">Religious / Pilgrimage Guide</option>
+                    <option value="boat">Haor / Boat Guide</option>
+                    <option value="tribal">Tribal / Community Guide</option>
+                    <option value="translator">Translator / Language Support Guide</option>
+                    <option value="private_vip">Private VIP Guide</option>
+                    <option value="others">Others / Custom Guide Service</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="budget-input-group">
+                <label for="budgetFoodTier">Food & Dining</label>
+                <select id="budgetFoodTier" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.95rem;">
+                  <optgroup label="Budget Meals">
+                    <option value="street">Street Food / Local Snacks</option>
+                    <option value="mess">Local Mess / Student Canteen</option>
+                    <option value="breakfast">Tea Stall / Breakfast Stop</option>
+                  </optgroup>
+                  <optgroup label="Everyday Dining">
+                    <option value="standard" selected>Standard Restaurant Dining</option>
+                    <option value="family">Family Restaurant / Local Diner</option>
+                    <option value="fastfood">Fast Food / Cafe</option>
+                  </optgroup>
+                  <optgroup label="Spot-Specific Dining">
+                    <option value="seafood">Seafood Restaurant (coastal areas)</option>
+                    <option value="hill_cuisine">Hill Cuisine / Tribal Meal</option>
+                    <option value="tea_garden">Tea Garden Meal / Sylhet Dining</option>
+                    <option value="boat_meal">Boat / Launch Meal</option>
+                  </optgroup>
+                  <optgroup label="Premium Dining">
+                    <option value="buffet">Hotel Buffet Dining</option>
+                    <option value="fine_dining">Fine Dining / Premium Restaurant</option>
+                    <option value="resort_dining">Resort Dining / Sea-view Dinner</option>
+                    <option value="others">Others / Custom Dining</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+            <div class="budget-input-row" style="margin-bottom:16px;">
+              <div class="budget-input-group">
+                <label for="budgetPersons">Number of People</label>
+                <div class="budget-input-with-controls">
+                  <button type="button" class="budget-btn-minus" id="personMinus">−</button>
+                  <input 
+                    type="number" 
+                    id="budgetPersons" 
+                    min="1" 
+                    max="20" 
+                    value="1"
+                    aria-label="Number of people for trip"
+                  >
+                  <button type="button" class="budget-btn-plus" id="personPlus">+</button>
+                </div>
+              </div>
+
+              <div class="budget-input-group">
+                <label for="budgetDays">Trip Duration (Days)</label>
+                <div class="budget-input-with-controls">
+                  <button type="button" class="budget-btn-minus" id="daysMinus">−</button>
+                  <input 
+                    type="number" 
+                    id="budgetDays" 
+                    min="1" 
+                    max="30" 
+                    value="3"
+                    aria-label="Trip duration in days"
+                  >
+                  <button type="button" class="budget-btn-plus" id="daysPlus">+</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="budget-breakdown">
+              <div class="budget-item">
+                <div class="budget-item-label">
+                  <span>🚌 Travel Cost</span>
+                  <small>(round-trip per person)</small>
+                </div>
+                <div class="budget-item-value" id="budgetTravelCost">Select your district</div>
+              </div>
+              <div class="budget-item">
+                <div class="budget-item-label">
+                  <span>🏨 Accommodation</span>
+                  <small>(per night per person)</small>
+                </div>
+                <div class="budget-item-value" id="budgetAccommodation">৳ 800</div>
+              </div>
+
+              <div class="budget-item">
+                <div class="budget-item-label">
+                  <span>🍽️ Food & Dining</span>
+                  <small>(per day per person)</small>
+                </div>
+                <div class="budget-item-value" id="budgetFood">৳ 350</div>
+              </div>
+
+              <div class="budget-item">
+                <div class="budget-item-label">
+                  <span>🧭 Tour Guide</span>
+                  <small>(flat group rate per day)</small>
+                </div>
+                <div class="budget-item-value" id="budgetGuide">৳ 0</div>
+              </div>
+
+              <div class="budget-item">
+                <div class="budget-item-label">
+                  <span>🚗 Local Transport & Activities</span>
+                  <small>(per day per person)</small>
+                </div>
+                <div class="budget-item-value" id="budgetLocalTransport">৳ 200</div>
+              </div>
+
+              <div class="budget-total-section">
+                <div class="budget-summary-row" id="budgetRouteInfo" style="font-size:0.85rem;color:var(--muted);"></div>
+                <div class="budget-summary-row">
+                  <span>Daily cost per person</span>
+                  <strong id="budgetPerPersonPerDay">৳ 3,900</strong>
+                </div>
+                <div class="budget-summary-row">
+                  <span>Total for all people, all days</span>
+                  <strong id="budgetTotal" style="font-size: 1.3rem; color: #a9e8bb;">৳ 11,700</strong>
+                </div>
+              </div>
+
+              <p class="budget-note">💡 Tip: Budget varies by season, route, and stay type. Beach, hill, forest, island, and haor trips in Bangladesh often need different hotel, transport, guide, and dining choices.</p>
             </div>
           </div>
         </div>
@@ -259,121 +481,6 @@
         </div>
       </section>
 
-      <!-- Related Destinations -->
-      <section class="dest-page-section" id="relatedSection">
-        <header class="section-heading">
-          <h2>🔗 Related Destinations</h2>
-          <p>Explore other nearby attractions</p>
-        </header>
-        <div class="dest-page-content">
-          <div class="related-grid" id="relatedDestinations">
-            <p>Loading related destinations...</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Budget Calculator Section -->
-      <section class="dest-page-section" id="budgetSection">
-        <header class="section-heading">
-          <h2>💰 Trip Budget Calculator</h2>
-          <p>Estimate your travel costs based on the number of people and trip duration.</p>
-        </header>
-        <div class="dest-page-content">
-          <div class="budget-calculator-shell">
-            <div class="budget-input-row" style="margin-bottom:16px;">
-              <div class="budget-input-group">
-                <label for="budgetOriginDest">Your District</label>
-                <select id="budgetOriginDest" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.95rem;"><option value="">-- Select --</option><option value="Dhaka">Dhaka</option><option value="Chattogram">Chattogram</option><option value="Rajshahi">Rajshahi</option><option value="Khulna">Khulna</option><option value="Sylhet">Sylhet</option><option value="Rangamati">Rangamati</option><option value="Cox's Bazar">Cox's Bazar</option><option value="Bandarban">Bandarban</option><option value="Khagrachari">Khagrachari</option><option value="Cumilla">Cumilla</option><option value="Noakhali">Noakhali</option><option value="Patuakhali">Patuakhali</option><option value="Naogaon">Naogaon</option><option value="Narayanganj">Narayanganj</option><option value="Bagerhat">Bagerhat</option><option value="Sunamganj">Sunamganj</option><option value="Moulvibazar">Moulvibazar</option><option value="Dinajpur">Dinajpur</option><option value="Kushtia">Kushtia</option><option value="Pabna">Pabna</option><option value="Meherpur">Meherpur</option><option value="Madaripur">Madaripur</option></select>
-              </div>
-              <div class="budget-input-group">
-                <label for="budgetTransportMode">Transport Mode</label>
-                <select id="budgetTransportMode" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.95rem;"><option value="bus">Bus</option><option value="train">Train</option><option value="launch">Launch</option><option value="air">Air</option></select>
-              </div>
-            </div>
-            <div class="budget-input-row">
-              <div class="budget-input-group">
-                <label for="budgetPersons">Number of People</label>
-                <div class="budget-input-with-controls">
-                  <button type="button" class="budget-btn-minus" id="personMinus">−</button>
-                  <input 
-                    type="number" 
-                    id="budgetPersons" 
-                    min="1" 
-                    max="20" 
-                    value="1"
-                    aria-label="Number of people for trip"
-                  >
-                  <button type="button" class="budget-btn-plus" id="personPlus">+</button>
-                </div>
-              </div>
-
-              <div class="budget-input-group">
-                <label for="budgetDays">Trip Duration (Days)</label>
-                <div class="budget-input-with-controls">
-                  <button type="button" class="budget-btn-minus" id="daysMinus">−</button>
-                  <input 
-                    type="number" 
-                    id="budgetDays" 
-                    min="1" 
-                    max="30" 
-                    value="3"
-                    aria-label="Trip duration in days"
-                  >
-                  <button type="button" class="budget-btn-plus" id="daysPlus">+</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="budget-breakdown">
-              <div class="budget-item">
-                <div class="budget-item-label">
-                  <span>🚌 Travel Cost</span>
-                  <small>(round-trip per person)</small>
-                </div>
-                <div class="budget-item-value" id="budgetTravelCost">Select your district</div>
-              </div>
-              <div class="budget-item">
-                <div class="budget-item-label">
-                  <span>🏨 Accommodation</span>
-                  <small>(per night per person)</small>
-                </div>
-                <div class="budget-item-value" id="budgetAccommodation">৳ 2,500</div>
-              </div>
-
-              <div class="budget-item">
-                <div class="budget-item-label">
-                  <span>🍽️ Food & Dining</span>
-                  <small>(per day per person)</small>
-                </div>
-                <div class="budget-item-value" id="budgetFood">৳ 800</div>
-              </div>
-
-              <div class="budget-item">
-                <div class="budget-item-label">
-                  <span>🚗 Local Transport & Activities</span>
-                  <small>(per day per person)</small>
-                </div>
-                <div class="budget-item-value" id="budgetLocalTransport">৳ 600</div>
-              </div>
-
-              <div class="budget-total-section">
-                <div class="budget-summary-row" id="budgetRouteInfo" style="font-size:0.85rem;color:var(--muted);"></div>
-                <div class="budget-summary-row">
-                  <span>Daily cost per person</span>
-                  <strong id="budgetPerPersonPerDay">৳ 3,900</strong>
-                </div>
-                <div class="budget-summary-row">
-                  <span>Total for all people, all days</span>
-                  <strong id="budgetTotal" style="font-size: 1.3rem; color: #a9e8bb;">৳ 11,700</strong>
-                </div>
-              </div>
-
-              <p class="budget-note">💡 Tip: Budget varies by season and accommodation type. Beach and nature destinations typically cost less than hill stations.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- Reviews Section -->
       <section class="dest-page-section" id="reviewSection">
         <header class="section-heading">
@@ -417,6 +524,19 @@
         </div>
       </section>
 
+      <!-- Related Destinations -->
+      <section class="dest-page-section" id="relatedSection">
+        <header class="section-heading">
+          <h2>🔗 Related Destinations</h2>
+          <p>Explore other nearby attractions</p>
+        </header>
+        <div class="dest-page-content">
+          <div class="related-grid" id="relatedDestinations">
+            <p>Loading related destinations...</p>
+          </div>
+        </div>
+      </section>
+
       <!-- Back to Home CTA -->
       <section class="dest-page-cta">
         <h2>Ready to explore more?</h2>
@@ -425,10 +545,49 @@
         <a href="index.html#discover" class="button secondary">All Destinations</a>
       </section>
     </main>
+  <!-- Booking Confirmation Modal -->
+  <div class="auth-modal" id="bookingConfirmModal" style="display: none;">
+    <div class="auth-modal-backdrop" onclick="closeBookingModal()"></div>
+    <div class="auth-modal-card" style="width: min(500px, 100%); grid-template-columns: 1fr; border-radius: 24px; padding: 28px; background: linear-gradient(135deg, rgba(7, 17, 11, 0.98), rgba(10, 23, 15, 0.98)); display: flex; flex-direction: column; gap: 20px;">
+      <button class="auth-close" onclick="closeBookingModal()">&times;</button>
+      <div style="text-align: center;">
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 2rem; color: #a9e8bb; margin-bottom: 8px;"><i class="fas fa-calendar-check"></i> Confirm Booking</h2>
+        <p style="color: var(--muted); font-size: 0.95rem; margin: 0;">Please review your trip details before confirming.</p>
+      </div>
+      
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px;">
+          <span style="color: var(--muted); font-size: 0.9rem;">Destination</span>
+          <strong id="modalDestName" style="color: var(--text);">--</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px;">
+          <span style="color: var(--muted); font-size: 0.9rem;">Travel Date</span>
+          <strong id="modalTravelDate" style="color: var(--text);">--</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px;">
+          <span style="color: var(--muted); font-size: 0.9rem;">Travelers</span>
+          <strong id="modalTravelers" style="color: var(--text);">1 Person</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding-top: 4px;">
+          <span style="color: var(--muted); font-size: 0.9rem; font-weight: 600;">Estimated Total</span>
+          <strong id="modalTotalPrice" style="color: #a9e8bb; font-size: 1.25rem;">৳ --</strong>
+        </div>
+      </div>
+
+      <div style="font-size: 0.8rem; color: var(--muted); text-align: center; line-height: 1.4;">
+        ⚠️ Note: You can cancel this booking free of charge up to 24 hours prior to the travel date.
+      </div>
+
+      <div class="auth-inline-actions" style="margin-top: 10px; display: flex; gap: 12px;">
+        <button class="button secondary" onclick="closeBookingModal()" style="flex: 1; padding: 12px; cursor: pointer;">Go Back</button>
+        <button class="button primary" id="modalConfirmBtn" style="flex: 1; padding: 12px; font-weight: 700; cursor: pointer;">Confirm Booking</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.0/leaflet.markercluster.min.js"></script>
+  <script src="/client-config.js"></script>
   <script src="script.js"></script>
   <script src="destination-init.js"></script>
   <script src="auth.js"></script>

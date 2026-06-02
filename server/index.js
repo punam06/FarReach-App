@@ -2,19 +2,26 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+const dotenv = require('dotenv');
 const express = require('express');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
 const db = require('./db');
 
+const projectRoot = path.join(__dirname, '..');
+const envPaths = [path.join(__dirname, '.env'), path.join(projectRoot, '.env')];
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath, override: false });
+  }
+}
 
 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const clientRoot = path.join(__dirname, '..');
+const clientRoot = projectRoot;
 
 app.use(express.json({ limit: '1mb' }));
 app.use((req, res, next) => {
@@ -28,6 +35,14 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(clientRoot));
+
+app.get('/client-config.js', (req, res) => {
+  const clientConfig = {
+    APP_API_BASE_URL: process.env.APP_API_BASE_URL || `http://127.0.0.1:${PORT}`,
+  };
+
+  res.type('application/javascript').send(`window.APP_API_BASE_URL = ${JSON.stringify(clientConfig.APP_API_BASE_URL)};`);
+});
 
 // Admin authentication middleware
 async function requireAdmin(req, res, next) {
@@ -700,49 +715,173 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.post('/api/hotels/search', async (req, res) => {
   try {
-    const { city } = req.body;
-    const baseRate = 2500;
-    
-    // Spot-specific hotel mappings
-    const spotHotels = {
+    const { city, destinationName, category, checkin, checkout } = req.body;
+
+    const hotelCatalogs = {
       "Cox's Bazar": [
-        { name: "Sayeman Beach Resort", url: "https://www.google.com/search?q=Sayeman+Beach+Resort+Coxs+Bazar", price: 8500, rating: 4.8 },
-        { name: "Ocean Paradise Hotel", url: "https://www.google.com/search?q=Ocean+Paradise+Hotel+Coxs+Bazar", price: 7500, rating: 4.6 },
-        { name: "Royal Tulip Sea Pearl", url: "https://www.google.com/search?q=Royal+Tulip+Sea+Pearl+Coxs+Bazar", price: 12000, rating: 4.9 },
-        { name: "Long Beach Hotel", url: "https://www.google.com/search?q=Long+Beach+Hotel+Coxs+Bazar", price: 6500, rating: 4.5 }
+        { name: 'Sayeman Beach Resort', url: 'https://www.google.com/search?q=Sayeman+Beach+Resort+Coxs+Bazar', price: 3200, rating: 4.8 },
+        { name: 'Ocean Paradise Hotel', url: 'https://www.google.com/search?q=Ocean+Paradise+Hotel+Coxs+Bazar', price: 2800, rating: 4.6 },
+        { name: 'Royal Tulip Sea Pearl', url: 'https://www.google.com/search?q=Royal+Tulip+Sea+Pearl+Coxs+Bazar', price: 4500, rating: 4.9 },
+        { name: 'Long Beach Hotel', url: 'https://www.google.com/search?q=Long+Beach+Hotel+Coxs+Bazar', price: 2500, rating: 4.5 },
+        { name: 'Seagull Hotel', url: 'https://www.google.com/search?q=Seagull+Hotel+Coxs+Bazar', price: 3800, rating: 4.7 },
+        { name: 'Praasad Paradise', url: 'https://www.google.com/search?q=Praasad+Paradise+Coxs+Bazar', price: 1700, rating: 4.3 }
       ],
-      "Sylhet": [
-        { name: "Grand Sylhet Hotel", url: "https://www.google.com/search?q=Grand+Sylhet+Hotel+Resort", price: 7800, rating: 4.7 },
-        { name: "Rose View Hotel", url: "https://www.google.com/search?q=Rose+View+Hotel+Sylhet", price: 6200, rating: 4.5 },
-        { name: "Hotel Noorjahan Grand", url: "https://www.google.com/search?q=Hotel+Noorjahan+Grand+Sylhet", price: 5500, rating: 4.4 },
-        { name: "Excelsior Sylhet", url: "https://www.google.com/search?q=Excelsior+Sylhet+Hotel", price: 4800, rating: 4.3 }
+      Sylhet: [
+        { name: 'Grand Sylhet Hotel', url: 'https://www.google.com/search?q=Grand+Sylhet+Hotel+Resort', price: 2600, rating: 4.7 },
+        { name: 'Rose View Hotel', url: 'https://www.google.com/search?q=Rose+View+Hotel+Sylhet', price: 2100, rating: 4.5 },
+        { name: 'Hotel Noorjahan Grand', url: 'https://www.google.com/search?q=Hotel+Noorjahan+Grand+Sylhet', price: 1800, rating: 4.4 },
+        { name: 'Excelsior Sylhet', url: 'https://www.google.com/search?q=Excelsior+Sylhet+Hotel', price: 1600, rating: 4.3 },
+        { name: 'Nirvana Inn', url: 'https://www.google.com/search?q=Nirvana+Inn+Sylhet', price: 2200, rating: 4.4 },
+        { name: 'Hotel Supreme', url: 'https://www.google.com/search?q=Hotel+Supreme+Sylhet', price: 1400, rating: 4.1 }
       ],
-      "Dhaka": [
-        { name: "Pan Pacific Sonargaon", url: "https://www.google.com/search?q=Pan+Pacific+Sonargaon+Dhaka", price: 15000, rating: 4.8 },
-        { name: "InterContinental Dhaka", url: "https://www.google.com/search?q=InterContinental+Dhaka", price: 18000, rating: 4.9 },
-        { name: "Radisson Blu Dhaka", url: "https://www.google.com/search?q=Radisson+Blu+Dhaka", price: 14000, rating: 4.7 },
-        { name: "The Westin Dhaka", url: "https://www.google.com/search?q=The+Westin+Dhaka", price: 16500, rating: 4.8 }
+      Dhaka: [
+        { name: 'Pan Pacific Sonargaon', url: 'https://www.google.com/search?q=Pan+Pacific+Sonargaon+Dhaka', price: 5000, rating: 4.8 },
+        { name: 'InterContinental Dhaka', url: 'https://www.google.com/search?q=InterContinental+Dhaka', price: 6000, rating: 4.9 },
+        { name: 'Radisson Blu Dhaka', url: 'https://www.google.com/search?q=Radisson+Blu+Dhaka', price: 4800, rating: 4.7 },
+        { name: 'The Westin Dhaka', url: 'https://www.google.com/search?q=The+Westin+Dhaka', price: 5500, rating: 4.8 },
+        { name: 'Lakeshore Hotel', url: 'https://www.google.com/search?q=Lakeshore+Hotel+Dhaka', price: 3200, rating: 4.5 },
+        { name: 'Hotel 71', url: 'https://www.google.com/search?q=Hotel+71+Dhaka', price: 1600, rating: 4.2 }
       ],
-      "Sajek Valley": [
-        { name: "Sajek Resort (PBA)", url: "https://www.google.com/search?q=Sajek+Resort+PBA", price: 5000, rating: 4.6 },
-        { name: "Runmoy Resort", url: "https://www.google.com/search?q=Runmoy+Resort+Sajek", price: 4500, rating: 4.5 },
-        { name: "Meghpunji Resort", url: "https://www.google.com/search?q=Meghpunji+Resort+Sajek", price: 6000, rating: 4.7 },
-        { name: "Lushai Heritage", url: "https://www.google.com/search?q=Lushai+Heritage+Sajek", price: 3500, rating: 4.3 }
+      'Sajek Valley': [
+        { name: 'Sajek Resort (PBA)', url: 'https://www.google.com/search?q=Sajek+Resort+PBA', price: 1800, rating: 4.6 },
+        { name: 'Runmoy Resort', url: 'https://www.google.com/search?q=Runmoy+Resort+Sajek', price: 1500, rating: 4.5 },
+        { name: 'Meghpunji Resort', url: 'https://www.google.com/search?q=Meghpunji+Resort+Sajek', price: 2200, rating: 4.7 },
+        { name: 'Lushai Heritage', url: 'https://www.google.com/search?q=Lushai+Heritage+Sajek', price: 1200, rating: 4.3 },
+        { name: 'Sajek View Resort', url: 'https://www.google.com/search?q=Sajek+View+Resort', price: 2400, rating: 4.6 },
+        { name: 'Alpine Cottage Sajek', url: 'https://www.google.com/search?q=Alpine+Cottage+Sajek', price: 1900, rating: 4.4 }
       ],
-      "Sundarbans": [
-        { name: "Tiger Garden International", url: "https://www.google.com/search?q=Tiger+Garden+International+Hotel+Khulna", price: 4500, rating: 4.4 },
-        { name: "City Inn Ltd", url: "https://www.google.com/search?q=City+Inn+Hotel+Khulna", price: 5500, rating: 4.5 },
-        { name: "Hotel Royal International", url: "https://www.google.com/search?q=Hotel+Royal+International+Khulna", price: 4000, rating: 4.2 },
-        { name: "Castle Salam", url: "https://www.google.com/search?q=Hotel+Castle+Salam+Khulna", price: 5200, rating: 4.3 }
+      Bandarban: [
+        { name: 'Nilgiri Resort', url: 'https://www.google.com/search?q=Nilgiri+Resort+Bandarban', price: 2800, rating: 4.7 },
+        { name: 'Hill Side Resort', url: 'https://www.google.com/search?q=Hill+Side+Resort+Bandarban', price: 1800, rating: 4.4 },
+        { name: 'Hotel Plaza Bandarban', url: 'https://www.google.com/search?q=Hotel+Plaza+Bandarban', price: 1300, rating: 4.1 },
+        { name: 'Marma Guest House', url: 'https://www.google.com/search?q=Marma+Guest+House+Bandarban', price: 1100, rating: 4.0 },
+        { name: 'Green Peak Resort', url: 'https://www.google.com/search?q=Green+Peak+Resort+Bandarban', price: 2100, rating: 4.5 },
+        { name: 'Sangu Valley Resort', url: 'https://www.google.com/search?q=Sangu+Valley+Resort+Bandarban', price: 2400, rating: 4.6 }
+      ],
+      Sundarbans: [
+        { name: 'Tiger Garden International', url: 'https://www.google.com/search?q=Tiger+Garden+International+Hotel+Khulna', price: 1500, rating: 4.4 },
+        { name: 'City Inn Ltd', url: 'https://www.google.com/search?q=City+Inn+Hotel+Khulna', price: 1800, rating: 4.5 },
+        { name: 'Hotel Royal International', url: 'https://www.google.com/search?q=Hotel+Royal+International+Khulna', price: 1300, rating: 4.2 },
+        { name: 'Castle Salam', url: 'https://www.google.com/search?q=Hotel+Castle+Salam+Khulna', price: 1700, rating: 4.3 },
+        { name: 'Jatra Flagship Khulna', url: 'https://www.google.com/search?q=Jatra+Flagship+Khulna', price: 2000, rating: 4.4 },
+        { name: 'Sundarbans Eco Lodge', url: 'https://www.google.com/search?q=Sundarbans+Eco+Lodge', price: 2400, rating: 4.5 }
       ]
     };
 
-    const hotels = spotHotels[city] || [
-      { name: `Agoda Hotels in ${city || 'Bangladesh'}`, url: `https://www.agoda.com/search?text=${encodeURIComponent(city || 'Bangladesh')}`, price: baseRate * 2, rating: 4.5 },
-      { name: `GoZayan Hotels in ${city || 'Bangladesh'}`, url: "https://gozayan.com/hotel", price: baseRate * 1.5, rating: 4.3 },
-      { name: `ShareTrip Hotels in ${city || 'Bangladesh'}`, url: "https://sharetrip.net/hotel", price: baseRate * 1.8, rating: 4.4 },
-      { name: `Kayak Hotels in ${city || 'Bangladesh'}`, url: `https://www.kayak.com/hotels/${encodeURIComponent(city || 'Bangladesh')}`, price: baseRate, rating: 4.2 }
+    const categoryCatalogs = {
+      beach: [
+        { name: 'Beach View Lodge', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} beach lodge`)}`, price: 2400, rating: 4.4 },
+        { name: 'Sea Breeze Resort', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} sea breeze resort`)}`, price: 3200, rating: 4.6 },
+        { name: 'Coastal Paradise Hotel', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} coastal paradise hotel`)}`, price: 1800, rating: 4.2 },
+        { name: 'Resort by the Bay', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} resort by the bay`)}`, price: 4200, rating: 4.7 },
+        { name: 'Sea Pearl Inn', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} sea pearl inn`)}`, price: 2600, rating: 4.5 }
+      ],
+      nature: [
+        { name: 'Eco Valley Resort', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} eco valley resort`)}`, price: 1900, rating: 4.4 },
+        { name: 'Hill View Cottage', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} hill view cottage`)}`, price: 1600, rating: 4.3 },
+        { name: 'Forest Retreat', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} forest retreat`)}`, price: 2200, rating: 4.5 },
+        { name: 'Trailside Lodge', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} trailside lodge`)}`, price: 1400, rating: 4.1 },
+        { name: 'Nature Nest Resort', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} nature nest resort`)}`, price: 2600, rating: 4.6 }
+      ],
+      history: [
+        { name: 'Heritage Garden Hotel', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} heritage garden hotel`)}`, price: 1700, rating: 4.3 },
+        { name: 'Old Town Inn', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} old town inn`)}`, price: 1400, rating: 4.1 },
+        { name: 'City Heritage Residency', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} city heritage residency`)}`, price: 2300, rating: 4.5 },
+        { name: 'Museum View Hotel', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} museum view hotel`)}`, price: 2000, rating: 4.4 },
+        { name: 'Classic Stay Bangladesh', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} classic stay`)}`, price: 1500, rating: 4.0 }
+      ],
+      religious: [
+        { name: 'Pilgrim Rest House', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} pilgrim rest house`)}`, price: 1200, rating: 4.1 },
+        { name: 'Sacred Stay Hotel', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} sacred stay hotel`)}`, price: 1600, rating: 4.2 },
+        { name: 'Devotional Residency', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} devotional residency`)}`, price: 1800, rating: 4.3 },
+        { name: 'Faith Guest House', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} faith guest house`)}`, price: 1000, rating: 4.0 },
+        { name: 'Peace Hotel', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} peace hotel`)}`, price: 1400, rating: 4.1 }
+      ],
+      city: [
+        { name: 'Business Class Hotel', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} business class hotel`)}`, price: 2600, rating: 4.4 },
+        { name: 'City Center Suites', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} city center suites`)}`, price: 3500, rating: 4.6 },
+        { name: 'Urban Stay', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} urban stay`)}`, price: 1800, rating: 4.2 },
+        { name: 'Metro Lodge', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} metro lodge`)}`, price: 1500, rating: 4.1 },
+        { name: 'Capital Comfort Inn', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} capital comfort inn`)}`, price: 2200, rating: 4.3 }
+      ],
+      wetland: [
+        { name: 'Haor View Homestay', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} haor view homestay`)}`, price: 900, rating: 4.0 },
+        { name: 'Wetland Eco Lodge', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} wetland eco lodge`)}`, price: 1600, rating: 4.2 },
+        { name: 'Riverbank Cottage', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} riverbank cottage`)}`, price: 1200, rating: 4.1 },
+        { name: 'Boat House Stay', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} boat house stay`)}`, price: 1100, rating: 4.1 },
+        { name: 'Marshland Resort', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} marshland resort`)}`, price: 1800, rating: 4.3 }
+      ],
+      culture: [
+        { name: 'Cultural Plaza Hotel', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} cultural plaza hotel`)}`, price: 1900, rating: 4.3 },
+        { name: 'Artisan Inn', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} artisan inn`)}`, price: 1400, rating: 4.1 },
+        { name: 'Festival Residency', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} festival residency`)}`, price: 2100, rating: 4.4 },
+        { name: 'Local Heritage Lodge', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} local heritage lodge`)}`, price: 1200, rating: 4.0 },
+        { name: 'Craftsman Stay', url: `https://www.google.com/search?q=${encodeURIComponent(`${city || destinationName || 'Bangladesh'} craftsman stay`)}`, price: 1500, rating: 4.1 }
+      ]
+    };
+
+    const defaultHotels = [
+      { name: `Agoda Hotels in ${city || destinationName || 'Bangladesh'}`, url: `https://www.agoda.com/search?text=${encodeURIComponent(city || destinationName || 'Bangladesh')}`, price: 2400, rating: 4.4 },
+      { name: `GoZayan Hotels in ${city || destinationName || 'Bangladesh'}`, url: 'https://gozayan.com/hotel', price: 1800, rating: 4.2 },
+      { name: `ShareTrip Hotels in ${city || destinationName || 'Bangladesh'}`, url: 'https://sharetrip.net/hotel', price: 2200, rating: 4.3 },
+      { name: `Booking.com in ${city || destinationName || 'Bangladesh'}`, url: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city || destinationName || 'Bangladesh')}`, price: 2600, rating: 4.5 },
+      { name: `Kayak Hotels in ${city || destinationName || 'Bangladesh'}`, url: `https://www.kayak.com/hotels/${encodeURIComponent(city || destinationName || 'Bangladesh')}`, price: 2000, rating: 4.2 }
     ];
+
+    const cityKey = [destinationName, city].find((value) => value && hotelCatalogs[value]);
+    const catalog = cityKey ? hotelCatalogs[cityKey] : (category && categoryCatalogs[String(category).toLowerCase()]) || defaultHotels;
+
+    const parseDate = (value) => {
+      if (!value) return null;
+      const date = new Date(`${value}T00:00:00`);
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+
+    const stableHash = (value) => {
+      let hash = 0;
+      for (let index = 0; index < value.length; index += 1) {
+        hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+      }
+      return hash;
+    };
+
+    const checkinDate = parseDate(checkin);
+    const checkoutDate = parseDate(checkout);
+    const tripDays = checkinDate && checkoutDate ? Math.max(1, Math.ceil((checkoutDate - checkinDate) / 86400000)) : 1;
+    const peakSeason = checkinDate ? [10, 11, 0, 1].includes(checkinDate.getMonth()) : false;
+
+    const hotels = catalog.map((hotel) => {
+      const seed = stableHash([city || '', destinationName || '', category || '', hotel.name, checkin || '', checkout || ''].join('|'));
+      const roll = seed % 100;
+      let availability = 'available';
+      if (roll < 18) availability = 'unavailable';
+      else if (roll < 45) availability = 'limited';
+
+      if (peakSeason && ['beach', 'city'].includes(String(category || '').toLowerCase()) && availability === 'available' && roll % 3 === 0) {
+        availability = 'limited';
+      }
+
+      if (tripDays >= 5 && availability === 'available' && roll % 4 === 0) {
+        availability = 'limited';
+      }
+
+      let note = 'Rooms available for the selected dates.';
+      if (availability === 'limited') note = 'Limited rooms left for the selected dates.';
+      if (availability === 'unavailable') note = 'Booked for part or all of the selected dates. Try an alternative.';
+
+      return {
+        ...hotel,
+        availability,
+        note,
+      };
+    });
+
+    hotels.sort((a, b) => {
+      const order = { available: 0, limited: 1, unavailable: 2 };
+      const statusDiff = (order[a.availability] ?? 3) - (order[b.availability] ?? 3);
+      if (statusDiff !== 0) return statusDiff;
+      return (a.price || 0) - (b.price || 0);
+    });
 
     res.json({ hotels });
   } catch (err) { res.status(500).json({ error: 'Search failed' }); }
@@ -1106,6 +1245,7 @@ app.get('/api/user/dashboard', requireAuth, async (req, res) => {
     const user = await currentUserFromRequest(req);
     const [rc] = await db.query('SELECT COUNT(*) as count FROM reviews WHERE user_id = ?', [user.id]);
     const [sc] = await db.query('SELECT COUNT(*) as count FROM saved_spots WHERE user_id = ?', [user.id]);
+    const [bc] = await db.query('SELECT COUNT(*) as count FROM bookings WHERE user_id = ? AND status != "cancelled"', [user.id]);
     const [rr] = await db.query(`
       SELECT r.*, s.name as spot_name 
       FROM reviews r 
@@ -1121,12 +1261,21 @@ app.get('/api/user/dashboard', requireAuth, async (req, res) => {
       WHERE ss.user_id = ? 
       ORDER BY ss.created_at DESC LIMIT 5
     `, [user.id]);
+    const [rb] = await db.query(`
+      SELECT b.*, s.name as spot_name 
+      FROM bookings b 
+      LEFT JOIN spots s ON b.spot_id = s.id 
+      WHERE b.user_id = ? 
+      ORDER BY b.created_at DESC LIMIT 5
+    `, [user.id]);
     
     res.json({ 
       reviewCount: rc[0].count, 
       savedCount: sc[0].count, 
+      bookingCount: bc[0].count,
       recentReviews: rr, 
-      recentSaved: rs 
+      recentSaved: rs,
+      recentBookings: rb
     });
   } catch (err) { res.status(500).json({ error: 'User dashboard failed' }); }
 });
@@ -1222,7 +1371,7 @@ app.post('/api/bookings', requireAuth, async (req, res) => {
     }
 
     // Calculate estimated price based on budget category and persons
-    const baseRate = spot.budget_category === 'High' ? 5000 : (spot.budget_category === 'Mid' ? 3750 : 2500);
+    const baseRate = spot.budget_category === 'High' ? 1700 : (spot.budget_category === 'Mid' ? 1250 : 800);
     const price = parseInt(customPrice) || (baseRate * numPersons);
 
     const [result] = await db.query(
@@ -1267,7 +1416,16 @@ app.delete('/api/user/bookings/:id', requireAuth, async (req, res) => {
     // Check 24-hour cancellation window: booking_date must be at least 24h away
     if (booking.booking_date) {
       const bookingDate = new Date(booking.booking_date);
+      const bookingDateOnly = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
       const now = new Date();
+      const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      if (bookingDateOnly < todayDateOnly) {
+        return res.status(400).json({ 
+          error: 'Booking date has already passed. Completed bookings cannot be cancelled.' 
+        });
+      }
+
       const hoursUntilBooking = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
       if (hoursUntilBooking < 24) {

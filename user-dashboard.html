@@ -40,10 +40,12 @@
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-card-header"><div class="stat-card-icon blue"><i class="fas fa-heart"></i></div></div><div class="stat-card-value" id="stat-saved">0</div><div class="stat-card-label">Saved Spots</div></div>
           <div class="stat-card"><div class="stat-card-header"><div class="stat-card-icon orange"><i class="fas fa-star"></i></div></div><div class="stat-card-value" id="stat-reviews">0</div><div class="stat-card-label">Reviews Given</div></div>
+          <div class="stat-card"><div class="stat-card-header"><div class="stat-card-icon green"><i class="fas fa-calendar-check"></i></div></div><div class="stat-card-value" id="stat-bookings">0</div><div class="stat-card-label">Total Bookings</div></div>
         </div>
         <div class="content-grid">
           <div class="card"><div class="card-header"><h3><i class="fas fa-heart"></i> My Recent Saved Spots</h3></div><div class="card-body" id="home-saved"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></div></div>
           <div class="card"><div class="card-header"><h3><i class="fas fa-star"></i> My Recent Reviews</h3></div><div class="card-body" id="home-reviews"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></div></div>
+          <div class="card" style="grid-column: 1 / -1;"><div class="card-header"><h3><i class="fas fa-calendar-check"></i> My Recent Bookings</h3></div><div class="card-body" id="home-bookings"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></div></div>
         </div>
       </div>
       <!-- SAVED SPOTS -->
@@ -59,7 +61,14 @@
       <!-- MY BOOKINGS -->
       <div class="page-section" id="page-bookings">
         <div class="page-header"><h1><i class="fas fa-calendar-check"></i> My Bookings</h1><p>Your hotel and guide reservations</p></div>
-        <div class="card"><div class="card-body" id="bookings-list"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></div></div>
+        <div class="card" style="margin-bottom:24px;">
+          <div class="card-header"><h3><i class="fas fa-calendar-check"></i> Active Bookings</h3></div>
+          <div class="card-body" id="active-bookings-list"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3><i class="fas fa-history"></i> Previous Bookings</h3></div>
+          <div class="card-body" id="previous-bookings-list"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></div>
+        </div>
       </div>
       <!-- PROFILE SETTINGS -->
       <div class="page-section" id="page-profile">
@@ -99,6 +108,29 @@
         <div class="form-group"><label><i class="fas fa-comment"></i> Review</label><textarea class="form-control" id="edit-review-text" rows="4"></textarea></div>
       </div>
       <div class="modal-footer"><button class="btn-sm delete" onclick="closeModal('edit-review-modal')">Cancel</button><button class="btn-sm add" onclick="saveReviewEdit()"><i class="fas fa-save"></i> Save</button></div>
+    </div>
+  </div>
+  <!-- Cancel Booking Modal -->
+  <div class="modal-overlay" id="cancel-booking-modal">
+    <div class="modal" style="max-width:450px;">
+      <div class="modal-header"><h3><i class="fas fa-times-circle"></i> Cancel Booking</h3><button class="modal-close" onclick="closeModal('cancel-booking-modal')">&times;</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="cancel-booking-id">
+        <p style="font-size:14px;line-height:1.5;margin-bottom:16px;">Are you sure you want to cancel the following reservation?</p>
+        
+        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:12px;font-size:13px;display:flex;flex-direction:column;gap:8px;">
+          <div><strong>Spot/Target:</strong> <span id="cancelModalSpot">--</span></div>
+          <div><strong>Date:</strong> <span id="cancelModalDate">--</span></div>
+          <div><strong>Type:</strong> <span id="cancelModalType">--</span></div>
+          <div><strong>Price:</strong> <span id="cancelModalPrice">৳ --</span></div>
+        </div>
+
+        <p style="font-size:12px;color:var(--danger);margin-top:14px;font-weight:500;"><i class="fas fa-exclamation-triangle"></i> This action cannot be undone. Cancellation is free of charge since it is at least 24 hours prior to travel.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-sm edit" onclick="closeModal('cancel-booking-modal')">Go Back</button>
+        <button class="btn-sm delete" id="confirmCancelBtn"><i class="fas fa-times-circle"></i> Cancel Booking</button>
+      </div>
     </div>
   </div>
   <div class="toast" id="toast"></div>
@@ -141,6 +173,7 @@
         const data = await res.json();
         document.getElementById('stat-saved').textContent=data.savedCount;
         document.getElementById('stat-reviews').textContent=data.reviewCount;
+        if(document.getElementById('stat-bookings')) document.getElementById('stat-bookings').textContent=data.bookingCount || 0;
         document.getElementById('greeting-name').textContent=currentUser.name.split(' ')[0];
         const se=document.getElementById('home-saved');
         if(data.recentSaved.length===0) se.innerHTML='<div class="empty-state"><i class="fas fa-heart"></i><h4>No saved spots yet</h4><p>Explore and save your favorites!</p></div>';
@@ -165,6 +198,33 @@
             </div>
           `;
         }).join('');
+        const be=document.getElementById('home-bookings');
+        if(be) {
+          if(!data.recentBookings || data.recentBookings.length===0) be.innerHTML='<div class="empty-state"><i class="fas fa-calendar-check"></i><h4>No recent bookings</h4><p>Book a trip to get started!</p></div>';
+          else be.innerHTML=data.recentBookings.map(b=>{
+            const bookingDate = new Date(b.booking_date);
+            const bookingDateOnly = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const isPast = bookingDateOnly < today;
+            
+            var displayStatus = b.status;
+            if (b.status === 'confirmed' && isPast) {
+              displayStatus = 'completed';
+            }
+            
+            var statusColor = displayStatus==='completed'?'#4299e1':(displayStatus==='confirmed'?'var(--success)':(displayStatus==='cancelled'?'var(--danger)':'#F5A623'));
+            return `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #E2E8F0;">
+                <div>
+                  <div style="font-size:14px;font-weight:600;"><i class="fas fa-calendar-alt" style="color:var(--primary);margin-right:6px;"></i>${b.spot_name || b.target_name || 'Booking'}</div>
+                  <div style="font-size:12px;color:#718096;margin-top:4px;">${new Date(b.booking_date).toLocaleDateString()} &nbsp;|&nbsp; ৳${b.price.toLocaleString()}</div>
+                </div>
+                <div style="font-size:12px;font-weight:600;color:${statusColor};text-transform:uppercase;">${displayStatus}</div>
+              </div>
+            `;
+          }).join('');
+        }
       } catch(e){showToast('Failed to load dashboard','error');}
     }
     async function loadSavedSpots() {
@@ -286,22 +346,51 @@
       try{
         const res=await fetch(API+'/user/bookings',{headers:getHeaders()});
         const data=await res.json();
-        const bl=document.getElementById('bookings-list');
-        if(data.bookings.length===0) {
-          bl.innerHTML='<div class="empty-state"><i class="fas fa-calendar-check"></i><h4>No bookings yet</h4><p>Book a spot from the destination page to get started.</p></div>';
-          return;
-        }
-        bl.innerHTML=data.bookings.map(function(b){
+        
+        const activeBl=document.getElementById('active-bookings-list');
+        const previousBl=document.getElementById('previous-bookings-list');
+        
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        const activeBookings = [];
+        const previousBookings = [];
+        
+        data.bookings.forEach(function(b) {
+          const bookingDate = new Date(b.booking_date);
+          const bookingDateOnly = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
+          const isPast = bookingDateOnly < today;
+          
+          if (b.status === 'cancelled' || isPast) {
+            previousBookings.push(b);
+          } else {
+            activeBookings.push(b);
+          }
+        });
+
+        // Helper function to render a booking card
+        function renderBookingCard(b, isActive) {
           var typeIcon = b.type==='hotel'?'hotel':(b.type==='guide'?'user-tie':'box-open');
-          var statusColor = b.status==='confirmed'?'var(--success)':(b.status==='cancelled'?'var(--danger)':'#F5A623');
-          var statusBg = b.status==='confirmed'?'rgba(80,216,120,0.1)':(b.status==='cancelled'?'rgba(229,62,62,0.1)':'rgba(245,166,35,0.1)');
+          
+          const bookingDate = new Date(b.booking_date);
+          const bookingDateOnly = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
+          const isPast = bookingDateOnly < today;
+          
+          var displayStatus = b.status;
+          if (b.status === 'confirmed' && isPast) {
+            displayStatus = 'completed';
+          }
+          
+          var statusColor = displayStatus==='completed'?'#4299e1':(displayStatus==='confirmed'?'var(--success)':(displayStatus==='cancelled'?'var(--danger)':'#F5A623'));
+          var statusBg = displayStatus==='completed'?'rgba(66,153,225,0.1)':(displayStatus==='confirmed'?'rgba(80,216,120,0.1)':(displayStatus==='cancelled'?'rgba(229,62,62,0.1)':'rgba(245,166,35,0.1)'));
+          
           var spotLabel = b.spot_name || b.target_name || 'Unknown';
           var dateStr = b.booking_date ? new Date(b.booking_date).toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'}) : 'N/A';
           var createdStr = b.created_at ? new Date(b.created_at).toLocaleDateString() : '';
 
           var cancelBtn = '';
-          if (b.status !== 'cancelled') {
-            cancelBtn = '<button class="btn-sm delete" onclick="cancelBooking('+b.id+')" style="margin-top:8px;"><i class="fas fa-times-circle"></i> Cancel Booking</button>';
+          if (isActive && b.status !== 'cancelled') {
+            cancelBtn = '<button class="btn-sm delete" onclick="openCancelModal('+b.id+', \''+spotLabel.replace(/'/g, "\\'")+'\', \''+dateStr+'\', \''+b.type+'\', '+b.price+')" style="margin-top:8px;"><i class="fas fa-times-circle"></i> Cancel Booking</button>';
           }
 
           return '<div style="border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;margin-bottom:12px;background:rgba(255,255,255,0.02);">'+
@@ -315,16 +404,51 @@
                 '</div>'+
                 (createdStr ? '<div style="font-size:11px;color:#a0aec0;margin-top:2px;">Booked on '+createdStr+'</div>' : '')+
               '</div>'+
-              '<span style="padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;color:'+statusColor+';background:'+statusBg+';text-transform:uppercase;">'+b.status+'</span>'+
+              '<span style="padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;color:'+statusColor+';background:'+statusBg+';text-transform:uppercase;">'+displayStatus+'</span>'+
             '</div>'+
             cancelBtn+
           '</div>';
-        }).join('');
+        }
+
+        // Render Active Bookings
+        if (activeBookings.length === 0) {
+          activeBl.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-check"></i><h4>No active bookings</h4><p>Book a spot to see it here.</p></div>';
+        } else {
+          activeBl.innerHTML = activeBookings.map(function(b) {
+            return renderBookingCard(b, true);
+          }).join('');
+        }
+
+        // Render Previous Bookings
+        if (previousBookings.length === 0) {
+          previousBl.innerHTML = '<div class="empty-state"><i class="fas fa-history"></i><h4>No previous bookings</h4></div>';
+        } else {
+          previousBl.innerHTML = previousBookings.map(function(b) {
+            return renderBookingCard(b, false);
+          }).join('');
+        }
+
       } catch(e){showToast('Failed to load bookings','error');}
     }
 
+    window.openCancelModal = function(id, spotName, dateStr, type, price) {
+      document.getElementById('cancel-booking-id').value = id;
+      document.getElementById('cancelModalSpot').textContent = spotName;
+      document.getElementById('cancelModalDate').textContent = dateStr;
+      document.getElementById('cancelModalType').textContent = type.toUpperCase();
+      document.getElementById('cancelModalPrice').textContent = '৳ ' + price.toLocaleString();
+
+      const modal = document.getElementById('cancel-booking-modal');
+      if (modal) modal.classList.add('active');
+
+      const confirmBtn = document.getElementById('confirmCancelBtn');
+      confirmBtn.onclick = function() {
+        closeModal('cancel-booking-modal');
+        cancelBooking(id);
+      };
+    };
+
     async function cancelBooking(id) {
-      if (!confirm('Are you sure you want to cancel this booking?')) return;
       try {
         var res = await fetch(API+'/user/bookings/'+id, {
           method: 'DELETE',

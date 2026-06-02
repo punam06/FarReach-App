@@ -57,12 +57,12 @@ async function initDestinationPage() {
   displayDestinationForecastCalendar(district);
   displayDestinationDetailMap(district);
   displayDestinationGuide(place);
-  displayHotels(district);
+  displayHotels(place);
   displayRelatedDestinations(district, destIndex);
   updateBookingLinks(name, district);
   initBookingSection(place, destIndex);
   initReviewSection();
-  initBudgetCalculator(category);
+  initBudgetCalculator(place);
 }
 
 function escapeHtml(value) {
@@ -658,13 +658,75 @@ function getSeasonalInfo(category) {
   return seasonByCategory[category] || 'Year-round accessible. Check weather before planning.';
 }
 
-async function displayHotels(district) {
+function getBudgetRecommendation(place) {
+  const [name, district, category] = place || [];
+  const lowerDistrict = (district || '').toLowerCase();
+  const lowerName = (name || '').toLowerCase();
+
+  const isBeach = ['beach', 'coastal', 'island'].includes(category) || lowerDistrict.includes('cox') || lowerDistrict.includes('kuakata') || lowerDistrict.includes('patuakhali') || lowerDistrict.includes('noakhali') || lowerName.includes('saint martin');
+  const isHill = ['nature', 'ecotourism'].includes(category) || lowerDistrict.includes('bandarban') || lowerDistrict.includes('sajek') || lowerDistrict.includes('rangamati') || lowerDistrict.includes('khagrachari');
+  const isWetland = category === 'wetland' || lowerDistrict.includes('sunamganj') || lowerDistrict.includes('haor');
+  const isHistory = ['history', 'culture', 'religious', 'city'].includes(category) || lowerDistrict.includes('dhaka') || lowerDistrict.includes('bogura') || lowerDistrict.includes('paharpur') || lowerDistrict.includes('bagerhat');
+
+  if (isBeach) {
+    return {
+      transport: 'bus_ac',
+      hotel: 'beach_resort',
+      guide: 'beach',
+      food: 'seafood',
+      text: 'Recommended for beach/coastal trips: AC bus or launch, beach resort, beach guide, and seafood dining.',
+    };
+  }
+
+  if (isHill) {
+    return {
+      transport: 'jeep',
+      hotel: 'hill_cottage',
+      guide: 'hill',
+      food: 'hill_cuisine',
+      text: 'Recommended for hill trips: jeep/4x4, hill cottage, hill trek guide, and local hill cuisine.',
+    };
+  }
+
+  if (isWetland) {
+    return {
+      transport: 'launch_deck',
+      hotel: 'homestay',
+      guide: 'boat',
+      food: 'boat_meal',
+      text: 'Recommended for haor/wetland trips: launch travel, homestay, boat guide, and boat meals.',
+    };
+  }
+
+  if (isHistory) {
+    return {
+      transport: 'train_chair',
+      hotel: '3star',
+      guide: 'heritage',
+      food: 'family',
+      text: 'Recommended for city/heritage trips: train or AC bus, 3-star hotel, heritage guide, and family dining.',
+    };
+  }
+
+  return {
+    transport: 'bus_nonac',
+    hotel: 'normal',
+    guide: 'local',
+    food: 'standard',
+    text: 'Recommended starting point: budget hotel, local guide, standard dining, and non-AC bus travel.',
+  };
+}
+
+async function displayHotels(place) {
   const list = document.getElementById('hotelResultsList');
   if (!list) return;
+
+  const [name, district, category] = place || [];
 
   const checkinInput = document.getElementById('hotelCheckin');
   const checkoutInput = document.getElementById('hotelCheckout');
   const searchBtn = document.getElementById('searchHotelsBtn');
+  const dateSummaryEl = document.getElementById('hotelDateSummary');
 
   // Set default dates
   const today = new Date();
@@ -678,32 +740,80 @@ async function displayHotels(district) {
     checkoutInput.value = tomorrow.toISOString().split('T')[0];
   }
 
+  const updateDateSummary = () => {
+    if (!dateSummaryEl) return;
+    const checkin = checkinInput?.value || '';
+    const checkout = checkoutInput?.value || '';
+    if (!checkin || !checkout) {
+      dateSummaryEl.textContent = 'Select check-in and check-out dates to see live availability.';
+      return;
+    }
+
+    const checkinDate = new Date(`${checkin}T00:00:00`);
+    const checkoutDate = new Date(`${checkout}T00:00:00`);
+    const nights = Number.isNaN(checkinDate.getTime()) || Number.isNaN(checkoutDate.getTime())
+      ? ''
+      : Math.max(1, Math.ceil((checkoutDate - checkinDate) / 86400000));
+
+    dateSummaryEl.innerHTML = nights
+      ? `Selected stay: <strong>${checkin}</strong> to <strong>${checkout}</strong> (${nights} night${nights === 1 ? '' : 's'}). Results are adjusted for this stay window.`
+      : `Selected stay: <strong>${checkin}</strong> to <strong>${checkout}</strong>. Results are adjusted for this stay window.`;
+  };
+
   async function performSearch() {
+    const checkin = checkinInput?.value || '';
+    const checkout = checkoutInput?.value || '';
+    updateDateSummary();
     list.innerHTML = '<div style="color:var(--muted); padding:10px 0;">Searching for accommodations...</div>';
     try {
       const res = await fetch(`${API_BASE_URL}/api/hotels/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: district })
+        body: JSON.stringify({ city: district, destinationName: name, category, checkin, checkout })
       });
       const data = await res.json();
       
       if (!data.hotels || data.hotels.length === 0) {
-        list.innerHTML = '<div style="color:var(--muted); padding:10px 0;">No specific hotels found in this district.</div>';
+        list.innerHTML = '<div style="color:var(--muted); padding:10px 0;">No matching hotels found for the selected destination and dates.</div>';
         return;
       }
 
-      list.innerHTML = data.hotels.map(h => `
-        <div class="hotel-card" style="padding:16px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; margin-bottom:12px; background: rgba(255,255,255,0.02); display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease;">
-          <div>
-            <strong style="color: var(--accent); font-size: 1.05rem;">🏨 ${h.name}</strong>
-            <div style="font-size:0.85rem; color:var(--muted); margin-top:6px;">
-              Rating: ${h.rating}★ | Est. ৳${h.price.toLocaleString()} / night
-            </div>
+      const statusOrder = { available: 0, limited: 1, unavailable: 2 };
+      const sortedHotels = [...data.hotels].sort((a, b) => {
+        const statusDiff = (statusOrder[a.availability] ?? 3) - (statusOrder[b.availability] ?? 3);
+        if (statusDiff !== 0) return statusDiff;
+        return (a.price || 0) - (b.price || 0);
+      });
+
+      const labelForStatus = (status) => {
+        if (status === 'available') return 'Available';
+        if (status === 'limited') return 'Limited availability';
+        return 'Unavailable for selected dates';
+      };
+
+      list.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
+          <div style="color:var(--muted); font-size:0.88rem; line-height:1.45;">
+            <strong style="color:var(--text);">${name || district || 'Selected destination'}</strong><br>
+            ${checkin && checkout ? `Live availability for <strong>${checkin}</strong> to <strong>${checkout}</strong>.` : 'Live availability for the selected trip dates.'}
           </div>
-          <a href="${h.url}" target="_blank" class="button secondary" style="padding:6px 14px; font-size:0.8rem; border-radius: 8px;">Visit Website</a>
+          <div style="font-size:0.8rem; color:var(--muted);">${sortedHotels.filter(h => h.availability === 'available').length} available options</div>
         </div>
-      `).join('');
+        ${sortedHotels.map(h => `
+          <div class="hotel-card" style="padding:16px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; margin-bottom:12px; background: rgba(255,255,255,0.02); display: flex; justify-content: space-between; align-items: center; gap:16px; transition: all 0.3s ease;">
+            <div style="min-width:0;">
+              <strong style="color: var(--accent); font-size: 1.05rem; display:block;">🏨 ${h.name}</strong>
+              <div style="font-size:0.85rem; color:var(--muted); margin-top:6px; line-height:1.45;">
+                Rating: ${Number(h.rating || 0).toFixed(1)}★ | Est. ৳${Number(h.price || 0).toLocaleString()} / night | ${labelForStatus(h.availability)}
+              </div>
+              <div style="font-size:0.78rem; color:${h.availability === 'available' ? '#a9e8bb' : h.availability === 'limited' ? '#F5C26B' : '#ff9a9a'}; margin-top:4px; line-height:1.4;">
+                ${h.note || 'Availability is updated for the selected dates.'}
+              </div>
+            </div>
+            <a href="${h.url}" target="_blank" rel="noopener noreferrer" class="button secondary" style="padding:6px 14px; font-size:0.8rem; border-radius: 8px; white-space:nowrap; ${h.availability === 'unavailable' ? 'opacity:0.7;' : ''}">${h.availability === 'unavailable' ? 'Check Alternative' : 'Visit Website'}</a>
+          </div>
+        `).join('')}
+      `;
     } catch (e) {
       list.innerHTML = '<div style="color:#F5A623; padding:10px 0;">Failed to load hotels. Please try again.</div>';
     }
@@ -714,6 +824,16 @@ async function displayHotels(district) {
     searchBtn.dataset.listenerAdded = 'true';
   }
 
+  if (checkinInput && !checkinInput.dataset.listenerAdded) {
+    checkinInput.addEventListener('change', performSearch);
+    checkinInput.dataset.listenerAdded = 'true';
+  }
+
+  if (checkoutInput && !checkoutInput.dataset.listenerAdded) {
+    checkoutInput.addEventListener('change', performSearch);
+    checkoutInput.dataset.listenerAdded = 'true';
+  }
+
   // Initial search
   await performSearch();
 }
@@ -722,28 +842,61 @@ function displayRelatedDestinations(district, currentIndex) {
   const container = document.getElementById('relatedDestinations');
   if (!container) return;
 
-  // Find other destinations in the same district
+  const currentSpot = spots[currentIndex];
+  if (!currentSpot) return;
+
+  function haversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function getSpotCoords(s) {
+    if (s[3] && Array.isArray(s[3])) return s[3];
+    const distName = s[1];
+    if (window.districtCoords && window.districtCoords[distName]) {
+      return window.districtCoords[distName];
+    }
+    return null;
+  }
+
+  const currentCoords = getSpotCoords(currentSpot) || [23.685, 90.3563];
+
+  // Calculate distance from current spot to all other spots, sort by distance
   const related = spots
-    .map((place, idx) => ({ place, idx }))
-    .filter(item => item.place[1] === district && item.idx !== currentIndex)
+    .map((place, idx) => {
+      const coords = getSpotCoords(place) || [23.685, 90.3563];
+      const dist = haversineDistance(currentCoords[0], currentCoords[1], coords[0], coords[1]);
+      return { place, idx, dist };
+    })
+    .filter(item => item.idx !== currentIndex)
+    .sort((a, b) => a.dist - b.dist)
     .slice(0, 4);
 
   if (related.length === 0) {
-    container.innerHTML = '<p style="grid-column: 1/-1;">No other destinations found in this district.</p>';
+    container.innerHTML = '<p style="grid-column: 1/-1;">No other destinations found.</p>';
     return;
   }
 
-  container.innerHTML = related.map(({ place, idx }) => {
+  container.innerHTML = related.map(({ place, idx, dist }) => {
     const [name, placedistrict, category] = place;
     const gradient = getSpotGradient(place);
+    const distText = dist < 1 ? 'Under 1 km away' : `${Math.round(dist)} km away`;
 
     return `
-      <article class="related-card" onclick="goToDestination(${idx})">
+      <article class="related-card" onclick="goToDestination(${idx})" style="cursor:pointer;">
         <div class="related-card-image" style="background-image: ${gradient}"></div>
         <div class="related-card-info">
-          <h4>${name}</h4>
-          <p>${cats[category]}</p>
-          <span class="button primary" style="width: 100%; display: flex; text-align: center;">View Details</span>
+          <h4 style="margin: 0 0 6px 0; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${name}</h4>
+          <p style="margin: 0 0 8px 0; font-size: 0.82rem; color: var(--muted);">${cats[category]} &nbsp;•&nbsp; ${placedistrict}</p>
+          <div style="font-size:0.8rem; color:var(--primary-light); display:flex; align-items:center; gap:6px; margin-bottom:12px;">
+            <i class="fas fa-map-marker-alt" style="color:var(--primary);"></i> ${distText}
+          </div>
+          <span class="button primary" style="width: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; padding: 8px 12px; border-radius: 8px;">View Details</span>
         </div>
       </article>
     `;
@@ -908,14 +1061,14 @@ function initReviewSection() {
 
 function getBudgetByCategory(category) {
   const fallbackBudgets = {
-    beach: { accommodation: 2500, food: 800, transport: 600 },
-    nature: { accommodation: 1800, food: 700, transport: 500 },
-    history: { accommodation: 2200, food: 750, transport: 550 },
-    religious: { accommodation: 1500, food: 650, transport: 450 },
-    culture: { accommodation: 2000, food: 800, transport: 600 },
-    city: { accommodation: 3000, food: 1000, transport: 700 },
-    ecotourism: { accommodation: 2200, food: 700, transport: 550 },
-    wetland: { accommodation: 1600, food: 700, transport: 500 }
+    beach: { accommodation: 800, food: 250, transport: 200 },
+    nature: { accommodation: 600, food: 200, transport: 150 },
+    history: { accommodation: 700, food: 250, transport: 150 },
+    religious: { accommodation: 500, food: 200, transport: 150 },
+    culture: { accommodation: 700, food: 250, transport: 200 },
+    city: { accommodation: 1000, food: 300, transport: 250 },
+    ecotourism: { accommodation: 700, food: 200, transport: 150 },
+    wetland: { accommodation: 500, food: 200, transport: 150 }
   };
 
   const budgets = (siteContentCache?.budgets && Object.keys(siteContentCache.budgets).length > 0)
@@ -925,26 +1078,104 @@ function getBudgetByCategory(category) {
   return budgets[category] || budgets.nature || fallbackBudgets.nature;
 }
 
-function initBudgetCalculator(category) {
+function getSelectedOptionLabel(selectEl, fallback = '') {
+  if (!selectEl) return fallback;
+  const selectedOption = selectEl.options?.[selectEl.selectedIndex];
+  return selectedOption ? selectedOption.textContent.trim() : fallback;
+}
+
+const hotelTierMultipliers = {
+  normal: 1,
+  guesthouse: 1.15,
+  homestay: 1.25,
+  beach_resort: 2.9,
+  hill_cottage: 2.5,
+  forest_lodge: 2.3,
+  rest_house: 1.4,
+  '3star': 2.8,
+  boutique: 3.2,
+  '5star': 5.6,
+  luxury_suite: 6.4,
+  others: 2
+};
+
+const guideTierRates = {
+  none: 0,
+  local: 600,
+  licensed: 1500,
+  beach: 850,
+  hill: 1400,
+  forest: 1600,
+  eco: 1100,
+  heritage: 1200,
+  religious: 950,
+  boat: 1000,
+  tribal: 1500,
+  translator: 1200,
+  private_vip: 2500,
+  others: 1200
+};
+
+const foodTierRates = {
+  street: 180,
+  mess: 240,
+  breakfast: 150,
+  standard: 350,
+  family: 450,
+  fastfood: 320,
+  seafood: 650,
+  hill_cuisine: 520,
+  tea_garden: 380,
+  boat_meal: 500,
+  buffet: 850,
+  fine_dining: 1200,
+  resort_dining: 1000,
+  others: 500
+};
+
+const transportModePricing = {
+  bus_nonac: { perKm: 1.2, minFare: 80 },
+  bus_ac: { perKm: 2.2, minFare: 150 },
+  bus_sleeper: { perKm: 2.6, minFare: 220 },
+  train_shovon: { perKm: 1.0, minFare: 80 },
+  train_chair: { perKm: 1.5, minFare: 120 },
+  train_ac: { perKm: 2.0, minFare: 200 },
+  train_sleeper: { perKm: 2.4, minFare: 250 },
+  launch_deck: { perKm: 0.8, minFare: 100 },
+  launch_cabin: { perKm: 2.2, minFare: 500 },
+  ferry: { perKm: 0.9, minFare: 120 },
+  boat: { perKm: 0.7, minFare: 80 },
+  microbus: { perKm: 3.5, minFare: 600 },
+  private_car: { perKm: 4.2, minFare: 900 },
+  cng: { perKm: 2.8, minFare: 180 },
+  jeep: { perKm: 5.0, minFare: 1200 },
+  air: { perKm: 5.0, minFare: 2000 }
+};
+
+function initBudgetCalculator(placeOrCategory) {
   const personInput = document.getElementById('budgetPersons');
   const daysInput = document.getElementById('budgetDays');
   const accEl = document.getElementById('budgetAccommodation');
   const foodEl = document.getElementById('budgetFood');
   const localTransportEl = document.getElementById('budgetLocalTransport');
+  const guideEl = document.getElementById('budgetGuide');
   const travelCostEl = document.getElementById('budgetTravelCost');
   const perPersonPerDayEl = document.getElementById('budgetPerPersonPerDay');
   const totalEl = document.getElementById('budgetTotal');
   const routeInfoEl = document.getElementById('budgetRouteInfo');
   const originSelect = document.getElementById('budgetOriginDest');
   const transportModeSelect = document.getElementById('budgetTransportMode');
+  const hotelTierSelect = document.getElementById('budgetHotelTier');
+  const guideTierSelect = document.getElementById('budgetGuideTier');
+  const foodTierSelect = document.getElementById('budgetFoodTier');
+  const suggestionTextEl = document.getElementById('budgetSuggestionText');
+  const applySuggestionBtn = document.getElementById('applyBudgetSuggestionBtn');
 
   if (!personInput || !daysInput) return;
 
+  const category = Array.isArray(placeOrCategory) ? placeOrCategory[2] : placeOrCategory;
   const budget = getBudgetByCategory(category);
-
-  // Per-km rates for each transport mode (BDT)
-  const perKmRates = { bus: 2.0, train: 1.8, launch: 1.5, air: 12.0 };
-  const minFares = { bus: 200, train: 250, launch: 300, air: 3500 };
+  const recommendation = getBudgetRecommendation(Array.isArray(placeOrCategory) ? placeOrCategory : [null, null, category]);
 
   function haversineDist(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -964,10 +1195,25 @@ function initBudgetCalculator(category) {
     const persons = parseInt(personInput.value) || 1;
     const days = parseInt(daysInput.value) || 1;
     const origin = originSelect ? originSelect.value : '';
-    const transportMode = transportModeSelect ? transportModeSelect.value : 'bus';
+    const transportMode = transportModeSelect ? transportModeSelect.value : 'bus_nonac';
+    const hotelTier = hotelTierSelect ? hotelTierSelect.value : 'normal';
+    const guideTier = guideTierSelect ? guideTierSelect.value : 'none';
+    const foodTier = foodTierSelect ? foodTierSelect.value : 'standard';
+    const transportLabel = getSelectedOptionLabel(transportModeSelect, 'Bus - Non-AC');
+    const hotelLabel = getSelectedOptionLabel(hotelTierSelect, 'Normal / Economy Hotel');
+    const guideLabel = getSelectedOptionLabel(guideTierSelect, 'No Guide (Self-Explore)');
+    const foodLabel = getSelectedOptionLabel(foodTierSelect, 'Standard Restaurant Dining');
 
-    const accPerNight = budget.accommodation;
-    const foodPerDay = budget.food;
+    // Calculate lodging rate
+    const hotelMultiplier = hotelTierMultipliers[hotelTier] || 1;
+    const accPerNight = Math.round(budget.accommodation * hotelMultiplier);
+
+    // Calculate food quality tier
+    const foodPerDay = foodTierRates[foodTier] || foodTierRates.standard;
+
+    // Calculate guide daily flat charge
+    const guidePerDay = guideTierRates[guideTier] || 0;
+
     const localTransportPerDay = budget.transport;
 
     // Calculate travel cost based on distance
@@ -980,11 +1226,13 @@ function initBudgetCalculator(category) {
       if (oCoords && dCoords) {
         let distKm = haversineDist(oCoords[0], oCoords[1], dCoords[0], dCoords[1]);
         distKm = Math.round(distKm * 1.3); // road distance factor
-        const perKm = perKmRates[transportMode] || 2.0;
-        const minFare = minFares[transportMode] || 200;
+        const transportPricing = transportModePricing[transportMode] || transportModePricing.bus_nonac;
+        const perKm = transportPricing.perKm;
+        const minFare = transportPricing.minFare;
         const oneWay = Math.max(Math.round(distKm * perKm), minFare);
         roundTripPerPerson = oneWay * 2;
-        routeText = `${origin} → ${destDistrict} (~${distKm} km by ${transportMode})`;
+        
+        routeText = `${origin} → ${destDistrict} (~${distKm} km by ${transportLabel})`;
       }
     }
 
@@ -995,11 +1243,20 @@ function initBudgetCalculator(category) {
       routeInfoEl.textContent = routeText;
     }
 
-    const perPersonPerDay = accPerNight + foodPerDay + localTransportPerDay;
-    const totalCost = (perPersonPerDay * persons * days) + (roundTripPerPerson * persons);
+    // Accommodation is for (days - 1) nights, minimum 1 night
+    const nights = Math.max(1, days - 1);
+    const totalLodging = accPerNight * persons * nights;
+    const totalFood = foodPerDay * persons * days;
+    const totalLocalTrans = localTransportPerDay * persons * days;
+    const totalGuide = guidePerDay * days;
+    const totalTravel = roundTripPerPerson * persons;
+    
+    const totalCost = totalLodging + totalFood + totalLocalTrans + totalGuide + totalTravel;
+    const perPersonPerDay = Math.round((totalCost - totalTravel) / (persons * days));
 
     if (accEl) accEl.textContent = `৳ ${accPerNight.toLocaleString()}`;
     if (foodEl) foodEl.textContent = `৳ ${foodPerDay.toLocaleString()}`;
+    if (guideEl) guideEl.textContent = `৳ ${guidePerDay.toLocaleString()}`;
     if (localTransportEl) localTransportEl.textContent = `৳ ${localTransportPerDay.toLocaleString()}`;
     if (perPersonPerDayEl) perPersonPerDayEl.textContent = `৳ ${perPersonPerDay.toLocaleString()}`;
     if (totalEl) totalEl.textContent = `৳ ${totalCost.toLocaleString()}`;
@@ -1022,11 +1279,19 @@ function initBudgetCalculator(category) {
     }
     if (bookingEstimateDetailsEl) {
       if (origin) {
-        bookingEstimateDetailsEl.innerHTML = `Calculated for <strong>${persons} traveler(s)</strong> from <strong>${origin}</strong> to <strong>${destDistrict}</strong> for <strong>${days} day(s)</strong> via <strong>${transportMode.toUpperCase()}</strong> (Lodging: ${category.toUpperCase()}).`;
+        bookingEstimateDetailsEl.innerHTML = `Calculated for <strong>${persons} traveler(s)</strong> from <strong>${origin}</strong> to <strong>${destDistrict}</strong> for <strong>${days} day(s)</strong> via <strong>${transportLabel}</strong> (Hotel: ${hotelLabel}, Food: ${foodLabel}, Guide: ${guideLabel}).`;
       } else {
         bookingEstimateDetailsEl.innerHTML = `<span style="color:#F5A623;">⚠️ Select your district in the Budget Calculator above for a complete estimate.</span>`;
       }
     }
+  }
+
+  function applyRecommendation(force = false) {
+    if (transportModeSelect && (force || transportModeSelect.value === 'bus_nonac')) transportModeSelect.value = recommendation.transport;
+    if (hotelTierSelect && (force || hotelTierSelect.value === 'normal')) hotelTierSelect.value = recommendation.hotel;
+    if (guideTierSelect && (force || guideTierSelect.value === 'none')) guideTierSelect.value = recommendation.guide;
+    if (foodTierSelect && (force || foodTierSelect.value === 'standard')) foodTierSelect.value = recommendation.food;
+    if (suggestionTextEl) suggestionTextEl.textContent = recommendation.text;
   }
 
   // Add event listeners
@@ -1034,6 +1299,17 @@ function initBudgetCalculator(category) {
   daysInput.addEventListener('change', updateCalculation);
   if (originSelect) originSelect.addEventListener('change', updateCalculation);
   if (transportModeSelect) transportModeSelect.addEventListener('change', updateCalculation);
+  if (hotelTierSelect) hotelTierSelect.addEventListener('change', updateCalculation);
+  if (guideTierSelect) guideTierSelect.addEventListener('change', updateCalculation);
+  if (foodTierSelect) foodTierSelect.addEventListener('change', updateCalculation);
+  if (applySuggestionBtn) {
+    applySuggestionBtn.addEventListener('click', () => {
+      applyRecommendation(true);
+      updateCalculation();
+    });
+  }
+
+  applyRecommendation(false);
 
   // Button controls
   document.getElementById('personPlus')?.addEventListener('click', () => {
@@ -1097,7 +1373,7 @@ function initBookingSection(place, destIndex) {
   // Base rate depends on budget category (matches server logic)
   const profile = getSpotFilterProfile(place);
   const budgetCategory = (profile.budget || 'low').toLowerCase();
-  const baseRate = budgetCategory === 'high' ? 5000 : (budgetCategory === 'mid' ? 3750 : 2500);
+  const baseRate = budgetCategory === 'high' ? 1700 : (budgetCategory === 'mid' ? 1250 : 800);
 
   function updatePrice() {
     const persons = parseInt(personsInput.value) || 1;
@@ -1129,7 +1405,17 @@ function initBookingSection(place, destIndex) {
   updatePrice();
 
   // Confirm booking
-  confirmBtn.addEventListener('click', async () => {
+  // Expose modal close function globally
+  window.closeBookingModal = function() {
+    const modal = document.getElementById('bookingConfirmModal');
+    if (modal) {
+      modal.classList.remove('is-open');
+      modal.style.display = 'none';
+    }
+  };
+
+  // Confirm booking with popup confirmation modal
+  confirmBtn.addEventListener('click', () => {
     const token = localStorage.getItem('tourismAuthToken') || '';
     if (!token) {
       messageEl.innerHTML = '<span style="color:#F5A623;">⚠️ Please <a href="/" style="color:#a9e8bb; text-decoration:underline;">sign in</a> to book this spot.</span>';
@@ -1143,61 +1429,81 @@ function initBookingSection(place, destIndex) {
     }
 
     const persons = parseInt(personsInput.value) || 1;
+    const estPrice = window.currentEstimatedBudget || (baseRate * persons);
 
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = '⏳ Booking...';
-    messageEl.innerHTML = '';
+    // Populate modal fields
+    document.getElementById('modalDestName').textContent = name;
+    document.getElementById('modalTravelDate').textContent = new Date(bookingDate).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+    document.getElementById('modalTravelers').textContent = persons + (persons === 1 ? ' traveler' : ' travelers');
+    document.getElementById('modalTotalPrice').textContent = '৳ ' + estPrice.toLocaleString();
 
-    try {
-      // Look up the spot_id by name from the DB
-      const spotName = name;
-      const lookupRes = await fetch(`${API_BASE_URL}/api/spots/lookup?name=${encodeURIComponent(spotName)}`).catch(() => null);
+    // Show modal
+    const modal = document.getElementById('bookingConfirmModal');
+    if (modal) {
+      modal.classList.add('is-open');
+      modal.style.display = 'flex';
+    }
 
-      let spotId = null;
+    // Set confirm button handler in modal
+    const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+    modalConfirmBtn.onclick = async () => {
+      window.closeBookingModal();
+      
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = '⏳ Booking...';
+      messageEl.innerHTML = '';
 
-      if (lookupRes && lookupRes.ok) {
-        const lookupData = await lookupRes.json();
-        if (lookupData.spot) spotId = lookupData.spot.id;
-      }
+      try {
+        // Look up the spot_id by name from the DB
+        const spotName = name;
+        const lookupRes = await fetch(`${API_BASE_URL}/api/spots/lookup?name=${encodeURIComponent(spotName)}`).catch(() => null);
 
-      // Fallback: use destination index + 1
-      if (!spotId) {
-        spotId = parseInt(destIndex) + 1;
-      }
+        let spotId = null;
 
-      const res = await fetch(`${API_BASE_URL}/api/bookings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify({
-          spot_id: spotId,
-          booking_date: bookingDate,
-          persons: persons,
-          price: window.currentEstimatedBudget || 0
-        })
-      });
+        if (lookupRes && lookupRes.ok) {
+          const lookupData = await lookupRes.json();
+          if (lookupData.spot) spotId = lookupData.spot.id;
+        }
 
-      const data = await res.json();
+        // Fallback: use destination index + 1
+        if (!spotId) {
+          spotId = parseInt(destIndex) + 1;
+        }
 
-      if (res.ok) {
-        messageEl.innerHTML = '<span style="color:#a9e8bb;">✅ ' + (data.message || 'Booking confirmed!') + '</span>';
-        confirmBtn.textContent = '✅ Booked!';
-        setTimeout(() => {
+        const res = await fetch(`${API_BASE_URL}/api/bookings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({
+            spot_id: spotId,
+            booking_date: bookingDate,
+            persons: persons,
+            price: estPrice
+          })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          messageEl.innerHTML = '<span style="color:#a9e8bb;">✅ ' + (data.message || 'Booking confirmed!') + '</span>';
+          confirmBtn.textContent = '✅ Booked!';
+          setTimeout(() => {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = '✅ Confirm Booking';
+          }, 3000);
+        } else {
+          messageEl.innerHTML = '<span style="color:#F5A623;">⚠️ ' + (data.error || 'Booking failed') + '</span>';
           confirmBtn.disabled = false;
           confirmBtn.textContent = '✅ Confirm Booking';
-        }, 3000);
-      } else {
-        messageEl.innerHTML = '<span style="color:#F5A623;">⚠️ ' + (data.error || 'Booking failed') + '</span>';
+        }
+      } catch (err) {
+        messageEl.innerHTML = '<span style="color:#F5A623;">⚠️ Connection error. Please try again.</span>';
         confirmBtn.disabled = false;
         confirmBtn.textContent = '✅ Confirm Booking';
       }
-    } catch (err) {
-      messageEl.innerHTML = '<span style="color:#F5A623;">⚠️ Connection error. Please try again.</span>';
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = '✅ Confirm Booking';
-    }
+    };
   });
 }
 

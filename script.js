@@ -103,10 +103,10 @@ let spots = [
 const API_BASE_URL = (window.location.origin === 'null' || window.location.origin.startsWith('file') || window.location.port === '5500' || window.location.port === '5501') ? 'http://127.0.0.1:3000' : window.location.origin;
 
 const budgetRates = {
-  transport: { bus: 900, train: 1200, launch: 750, air: 6500 },
-  hotel: { budget: 1800, standard: 3500, premium: 7000 },
-  guide: { budget: 2800, standard: 4200, premium: 6500 },
-  activity: { leisure: 1200, culture: 1000, adventure: 1800, eco: 1100, wildlife: 1500, family: 900 }
+  transport: { bus: 300, train: 400, launch: 250, air: 2200 },
+  hotel: { budget: 600, standard: 1200, premium: 2500 },
+  guide: { budget: 900, standard: 1400, premium: 2200 },
+  activity: { leisure: 400, culture: 300, adventure: 600, eco: 350, wildlife: 500, family: 300 }
 };
 
 const spotFilterProfiles = {
@@ -864,28 +864,46 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Per-km rates for each transport mode (BDT)
-const transportPerKmRates = { bus: 2.0, train: 1.8, launch: 1.5, air: 12.0 };
-const transportMinFare = { bus: 200, train: 250, launch: 300, air: 3500 };
+// Per-km rates for each comfort-based transport mode (BDT)
+const transportPerKmRates = {
+  bus_nonac: 1.2,
+  bus_ac: 2.2,
+  train_nonac: 1.0,
+  train_ac: 2.0,
+  launch_deck: 0.8,
+  launch_cabin: 2.2,
+  air: 5.0
+};
+const transportMinFare = {
+  bus_nonac: 80,
+  bus_ac: 150,
+  train_nonac: 80,
+  train_ac: 200,
+  launch_deck: 100,
+  launch_cabin: 500,
+  air: 2000
+};
 
 function calculateBudget() {
-  const origin = document.getElementById('budgetOrigin').value;
-  const travelers = parseInt(document.getElementById('budgetTravelers').value) || 1;
-  const nights = parseInt(document.getElementById('budgetNights').value) || 1;
-  const guideDays = parseInt(document.getElementById('budgetGuideDays').value) || 0;
-  const transportMode = document.getElementById('budgetTransport').value;
-  const hotelTier = document.getElementById('budgetHotelTier').value;
+  const origin = document.getElementById('budgetOrigin')?.value || '';
+  const travelers = parseInt(document.getElementById('budgetTravelers')?.value) || 1;
+  const nights = parseInt(document.getElementById('budgetNights')?.value) || 1;
+  const guideDays = parseInt(document.getElementById('budgetGuideDays')?.value) || 0;
+  const transportMode = document.getElementById('budgetTransport')?.value || 'bus_nonac';
+  const hotelTier = document.getElementById('budgetHotelTier')?.value || 'normal';
+  const guideTier = document.getElementById('budgetGuideTier')?.value || 'none';
+  const foodTier = document.getElementById('budgetFoodTier')?.value || 'standard';
   const res = document.getElementById('budgetResult');
 
   // Get destination district from the currently selected spot
   const destDistrict = document.getElementById('resultDistrict')?.textContent || '';
 
   if (!origin) {
-    res.innerHTML = '<div style="color:#F5A623;"><i class="fas fa-exclamation-triangle"></i> Please select your district first.</div>';
+    if (res) res.innerHTML = '<div style="color:#F5A623;"><i class="fas fa-exclamation-triangle"></i> Please select your district first.</div>';
     return;
   }
   if (!destDistrict || destDistrict === '-') {
-    res.innerHTML = '<div style="color:#F5A623;"><i class="fas fa-exclamation-triangle"></i> Please select a destination first.</div>';
+    if (res) res.innerHTML = '<div style="color:#F5A623;"><i class="fas fa-exclamation-triangle"></i> Please select a destination first.</div>';
     return;
   }
 
@@ -899,34 +917,58 @@ function calculateBudget() {
     distKm = haversineDistance(originCoords[0], originCoords[1], destCoords[0], destCoords[1]);
     // Road distance is roughly 1.3x straight-line
     distKm = Math.round(distKm * 1.3);
-    distNote = `${origin} → ${destDistrict} (~${distKm} km)`;
+    let readableTransport = transportMode.replace('_', ' ').toUpperCase();
+    distNote = `${origin} → ${destDistrict} (~${distKm} km by ${readableTransport})`;
   } else {
     distKm = 200; // fallback
     distNote = `${origin} → ${destDistrict} (est. ~200 km)`;
   }
 
-  const perKm = transportPerKmRates[transportMode] || 2.0;
-  const minFare = transportMinFare[transportMode] || 200;
+  const perKm = transportPerKmRates[transportMode] || 1.2;
+  const minFare = transportMinFare[transportMode] || 80;
   const oneWayFare = Math.max(Math.round(distKm * perKm), minFare);
   const roundTripFare = oneWayFare * 2;
 
-  const hotelRate = budgetRates.hotel[hotelTier] || 3500;
-  const guideRate = budgetRates.guide[hotelTier] || 4200;
+  // Lodging rate based on hotelTier choice
+  let baseHotelRate = 600;
+  if (hotelTier === 'homestay') baseHotelRate = 900;
+  else if (hotelTier === '3star') baseHotelRate = 1800;
+  else if (hotelTier === '5star') baseHotelRate = 3500;
+
+  // Food rate based on foodTier choice
+  let foodRate = 350;
+  if (foodTier === 'local') foodRate = 200;
+  else if (foodTier === 'premium') foodRate = 750;
+
+  // Tour Guide rate based on guideTier choice (group flat rate)
+  let guideRate = 0;
+  if (guideTier === 'local') guideRate = 600;
+  else if (guideTier === 'professional') guideRate = 1500;
+
+  // Local transport / activities per day per person
+  const localTransportRate = 200;
 
   const transportTotal = roundTripFare * travelers;
-  const hotelTotal = hotelRate * nights * Math.ceil(travelers / 2);
-  const guideTotal = guideRate * guideDays;
-  const total = transportTotal + hotelTotal + guideTotal;
+  const hotelTotal = baseHotelRate * travelers * nights;
+  const foodTotal = foodRate * travelers * (nights + 1);
+  const guideTotal = guideRate * (nights + 1);
+  const localTransTotal = localTransportRate * travelers * (nights + 1);
 
-  res.innerHTML = `
-    <div class="budget-total">Estimated: ৳${total.toLocaleString()} BDT</div>
-    <div class="budget-breakdown">
-      <div><strong>Route:</strong> ${distNote}</div>
-      <div><strong>Transport (${transportMode}, round-trip):</strong> ৳${transportTotal.toLocaleString()} <small>(৳${oneWayFare.toLocaleString()}/person one-way)</small></div>
-      <div><strong>Accommodation (${nights} nights):</strong> ৳${hotelTotal.toLocaleString()}</div>
-      <div><strong>Guide (${guideDays} days):</strong> ৳${guideTotal.toLocaleString()}</div>
-    </div>
-  `;
+  const total = transportTotal + hotelTotal + foodTotal + guideTotal + localTransTotal;
+
+  if (res) {
+    res.innerHTML = `
+      <div class="budget-total">Estimated: ৳${total.toLocaleString()} BDT</div>
+      <div class="budget-breakdown">
+        <div><strong>Route:</strong> ${distNote}</div>
+        <div><strong>Transport (${transportMode.replace('_', ' ').toUpperCase()}, round-trip):</strong> ৳${transportTotal.toLocaleString()} <small>(৳${oneWayFare.toLocaleString()}/person one-way)</small></div>
+        <div><strong>Accommodation (${nights} nights):</strong> ৳${hotelTotal.toLocaleString()}</div>
+        <div><strong>Food & Dining (${nights + 1} days):</strong> ৳${foodTotal.toLocaleString()}</div>
+        <div><strong>Tour Guide (${nights + 1} days):</strong> ৳${guideTotal.toLocaleString()} <small>(flat group rate)</small></div>
+        <div><strong>Local Transport & Activities:</strong> ৳${localTransTotal.toLocaleString()}</div>
+      </div>
+    `;
+  }
 }
 
 function showTab(tabName, btn) {
